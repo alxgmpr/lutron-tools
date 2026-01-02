@@ -78,26 +78,37 @@ The ESP32 with CC1101 radio is used for Lutron Clear Connect Type A RF transmiss
 **Connection Details:**
 - IP Address: `10.1.4.59` (ALWAYS - never use any other IP)
 - Hostname: `pico-trigger.local`
-- Web Auth: `admin:claude`
+- API: ESPHome native API (port 6053, encrypted)
 
 **ESPHome Commands (NEVER use --device flag, it's in the YAML):**
 ```bash
-esphome run pico-proxy-cc1101.yaml      # Compile and upload
-esphome compile pico-proxy-cc1101.yaml  # Compile only
-esphome logs pico-proxy-cc1101.yaml     # Stream logs (blocking)
+esphome run pico-proxy-cc1101.yaml --no-logs  # Compile and upload
+esphome compile pico-proxy-cc1101.yaml        # Compile only
+esphome logs pico-proxy-cc1101.yaml           # Stream logs (blocking)
 ```
 
-**Trigger Buttons via HTTP:**
+**Trigger Buttons via Python Controller:**
 ```bash
-# Authentication required - NOTE: ESPHome uses DASHES not underscores in URLs!
-curl -u admin:claude "http://10.1.4.59/button/BUTTON_ID/press"
+# The ESP32 uses native API, NOT HTTP. Use the Python controller:
+python3 esphome/esp32_controller.py list                # List all buttons
+python3 esphome/esp32_controller.py press rf-on         # RF On (Pico)
+python3 esphome/esp32_controller.py press rf-off        # RF Off (Pico)
+python3 esphome/esp32_controller.py press bridge-100    # Bridge level 100%
+python3 esphome/esp32_controller.py press bridge-0      # Bridge level 0%
+python3 esphome/esp32_controller.py serve --port 8080   # Start local web UI
 
-# Available buttons (use dashes, not underscores):
-curl -u admin:claude "http://10.1.4.59/button/rf-on/press"        # RF On (Pico)
-curl -u admin:claude "http://10.1.4.59/button/rf-off/press"       # RF Off (Pico)
-curl -u admin:claude "http://10.1.4.59/button/pair-esp32/press"   # PAIR ESP32 (unique ID)
-curl -u admin:claude "http://10.1.4.59/button/pair--0xb9-/press"  # PAIR (0xB9) (real Pico ID)
-curl -u admin:claude "http://10.1.4.59/button/test-pkt/press"     # TEST PKT
+# Available button aliases:
+# rf-on, rf-off, rf-raise, rf-lower, rf-favorite  (Pico 05851117)
+# level-0, level-25, level-50, level-75, level-100 (AF902C00)
+# bridge-0, bridge-50, bridge-100                   (06fdeff4)
+# beacon, beacon-5s, beacon-91, beacon-93           (Pairing beacons)
+# pair-b9, pair-esp32, test-pkt                     (Pairing/test)
+# bright, entertain, relax, off-084b1ebb            (Scene Pico)
+```
+
+**Requirements:**
+```bash
+pip3 install aioesphomeapi flask  # For Python controller
 ```
 
 **Working Directory for ESPHome:**
@@ -112,4 +123,11 @@ curl -u admin:claude "http://10.1.4.59/button/test-pkt/press"     # TEST PKT
 - never pass `--device` to `esphome`
 
 **SDR Capture**
-Often we need to run `rtl_sdr` WHILE we trigger a CURL to the ESP to emit some RF. We can use `concurrently`, the npm/npx package to do this. Remember that rtl_sdr does not start INSTANTLY. So we should ALWAYS be careful to make sure we get a real capture. Log the timestamps that we run CURL commands so that we can validate this when we analyze.
+Often we need to run `rtl_sdr` WHILE we trigger the ESP32 to emit RF. We can use `concurrently`, the npm/npx package to do this. Remember that rtl_sdr does not start INSTANTLY. So we should ALWAYS be careful to make sure we get a real capture. Log the timestamps that we trigger transmissions so that we can validate this when we analyze.
+
+Example capturing RF while pressing a button:
+```bash
+npx -y concurrently --success first \
+  "timeout 8 rtl_sdr -f 433602844 -s 2000000 -g 40 capture.cu8" \
+  "sleep 2 && python3 esphome/esp32_controller.py press rf-on && sleep 5"
+```
