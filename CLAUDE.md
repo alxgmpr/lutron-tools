@@ -37,10 +37,24 @@ python3 -m lutron_cca live
 python3 -m lutron_cca devices
 ```
 
+## RF Capture Tool (`rf/capture.py`)
+
+```bash
+python3 rf/capture.py <name>           # Capture RTL-SDR + ESPHome logs
+python3 rf/capture.py <name> --no-sdr  # ESPHome logs only
+python3 rf/capture.py <name> --no-logs # RTL-SDR only
+```
+
+Press Enter to stop. Files saved to `rf/captures/<name>.cu8` and `<name>.log`.
+
 ## Designer Proxy (`proxy/`)
 
 ```bash
 cd proxy && npm install && npm start
 ```
 
+## Rules
+
 NEVER use an emoji. Ever.
+
+NEVER run RTL-SDR captures or ESPHome log captures directly. ALWAYS ask the user to run the capture tool themselves and provide the output. The user is in control of all RF captures.
