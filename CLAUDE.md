@@ -10,8 +10,35 @@ python3 db/lutron-tool.py info <file>
 
 File format: `.ra3`/`.hw` (ZIP) → `<uuid>.lut` (MTF) → `Project.mdf` (SQL Server 2022)
 
-## ESP32 RF Controller (`rf/`)
+## CCA Playground (`rf/`)
 
+### Unified Server
+```bash
+cca serve                    # Start unified server (frontend + backend)
+cca serve -p 3000 -b 8080    # Custom ports
+```
+
+Opens web UI at http://localhost:3000 with real-time packet display.
+
+### CCA CLI
+```bash
+cca decode <file.log>        # Decode ESPHome log file
+cca decode "88 00 8D E6..."  # Decode hex packet
+cca live                     # Live packet stream from ESP32
+cca live --json              # JSON output for scripting
+cca crc "88 00 8D E6..."     # Calculate CRC-16
+cca info                     # Protocol reference
+```
+
+### Python API
+```python
+import cca
+packet = cca.decode("88 00 8D E6 95 05 21 04...")
+print(packet.device_id, packet.button, packet.crc_valid)
+crc = cca.calc_crc(bytes.fromhex("88008DE6950521"))
+```
+
+### ESP32 Controller (low-level)
 ```bash
 python3 rf/esp32_controller.py list
 python3 rf/esp32_controller.py press <button>
@@ -26,26 +53,6 @@ ESP32 at `10.1.4.59:6053`. ESPHome config in `rf/esphome/`.
 ```bash
 cd rf/esphome && esphome run pico-proxy-cc1101.yaml --no-logs
 ```
-
-## RF Analysis (`rf/lutron_cca/`)
-
-```bash
-python3 -m lutron_cca capture -d 10
-python3 -m lutron_cca decode capture.cu8
-python3 -m lutron_cca analyze capture.cu8
-python3 -m lutron_cca live
-python3 -m lutron_cca devices
-```
-
-## RF Capture Tool (`rf/capture.py`)
-
-```bash
-python3 rf/capture.py <name>           # Capture RTL-SDR + ESPHome logs
-python3 rf/capture.py <name> --no-sdr  # ESPHome logs only
-python3 rf/capture.py <name> --no-logs # RTL-SDR only
-```
-
-Press Enter to stop. Files saved to `rf/captures/<name>.cu8` and `<name>.log`.
 
 ## Designer Proxy (`proxy/`)
 
