@@ -10,7 +10,7 @@ The following files/directories contain auto-generated code. **NEVER edit them d
 
 To update generated code:
 1. Edit the source file (`protocol/cca.yaml`)
-2. Run `cca codegen` to regenerate
+2. Run `npm run codegen` from repo root (uses local cca crate; do not install cca globally)
 
 ### Hand-Maintained Files That Look Generated
 These files are **hand-maintained** despite their location or comments:
@@ -32,7 +32,8 @@ lutron-tools/
 
 ## Common Commands
 
-- `cca codegen` - Regenerate protocol code from cca.yaml
+- `npm run codegen` - Regenerate protocol code from cca.yaml (local cca in `cca/`)
+- `npm run cca -- <subcommand>` - Run other cca commands (e.g. `npm run cca -- decode "88 0C..."`)
 - `npm run dev` - Start backend (5001) + frontend dev server (5173). Open http://localhost:5173
 - `npm run build` - Build web frontend
 - `npm run start` (in backend) - Run backend only
@@ -41,7 +42,7 @@ lutron-tools/
 
 When updating packet definitions:
 1. Edit `protocol/cca.yaml` (source of truth)
-2. Run `cca codegen`
+2. Run `npm run codegen`
 3. Manually update `web/src/generated/protocol.ts` to match
 4. Rebuild frontend
 

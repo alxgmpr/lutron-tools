@@ -150,7 +150,7 @@ When reporting findings:
 
 When a field is confirmed:
 1. Update `protocol/cca.yaml` with the new field definition
-2. Run `cca codegen` to regenerate protocol files
+2. Run `npm run codegen` from repo root to regenerate protocol files
 3. Update `web/src/generated/protocol.ts` for frontend display
 
 ## Example Analysis Session
