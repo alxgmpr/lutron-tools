@@ -33,8 +33,9 @@ lutron-tools/
 ## Common Commands
 
 - `cca codegen` - Regenerate protocol code from cca.yaml
-- `cd web && npm run build` - Build frontend
-- `cd backend && bun run src/server.ts` - Start backend server
+- `npm run dev` - Start backend (5001) + frontend dev server (5173). Open http://localhost:5173
+- `npm run build` - Build web frontend
+- `npm run start` (in backend) - Run backend only
 
 ## Protocol Changes
 
