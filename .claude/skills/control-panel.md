@@ -6,48 +6,58 @@ Develop the React web frontend and Bun backend for the CCA packet control panel.
 
 ```
 /control-panel              # Show status and available commands
-/control-panel build        # Build production frontend
-/control-panel dev          # Start frontend dev server
-/control-panel backend      # Start backend server
-/control-panel full         # Start both backend and dev server
+/control-panel build        # Build production (Turbo: web + backend)
+/control-panel dev          # Start backend + frontend (unified flow)
+/control-panel backend      # Start backend only
+/control-panel frontend     # Start frontend dev server only
 ```
 
 ---
 
 ## Quick Start
 
+**Unified flow:** From repo root, one command starts everything:
+
+```bash
+npm run dev
+```
+
+This runs Turbo and starts both backend (port 5001) and Vite (port 5173). Open http://localhost:5173 (Vite proxies /api to backend).
+
 Based on the arguments provided, take the appropriate action:
 
 ### No arguments
 Show the current status:
-1. Check if dependencies are installed
+1. Check if dependencies are installed (run `npm install` from root)
 2. Show running processes (backend, dev server)
 3. List available commands
 
 ### "build"
-Build production frontend:
+Build production (web + backend):
 ```bash
-cd web && npm run build
+npm run build
 ```
 
 ### "dev"
-Start frontend development server:
+Start backend and frontend (unified flow):
 ```bash
-cd web && npm run dev
+npm run dev
 ```
 
 ### "backend"
-Start backend server:
+Start backend only (e.g. for API-only use):
 ```bash
 cd backend && bun run src/server.ts
 ```
 
-### "full"
-Start both backend and frontend dev server (in background):
+### "frontend"
+Start frontend dev server only (requires backend on 5001 for /api):
 ```bash
-cd backend && bun run src/server.ts &
 cd web && npm run dev
 ```
+
+### "full"
+Same as "dev" — use `npm run dev` from root.
 
 ---
 
