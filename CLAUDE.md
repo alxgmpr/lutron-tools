@@ -30,6 +30,18 @@ lutron-tools/
     └── src/generated/  # Hand-maintained frontend protocol utils
 ```
 
+## Ports
+
+| Port | Service | Purpose |
+|------|---------|---------|
+| 5001 | Bun backend | HTTP API, SSE packet stream, static frontend (production) |
+| 5173 | Vite dev server | Frontend hot reload (development only) |
+| 9433 | UDP RX | Receives packets from ESP32 |
+| 9434 | UDP TX | Sends commands to ESP32 |
+
+In development (`npm run dev`), open http://localhost:5173 for hot reloading.
+In production, the backend on 5001 serves the built frontend from `web/dist`.
+
 ## Common Commands
 
 - `npm run codegen` - Regenerate protocol code from cca.yaml (local cca in `cca/`)
