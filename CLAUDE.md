@@ -12,11 +12,6 @@ To update generated code:
 1. Edit the source file (`protocol/cca.yaml`)
 2. Run `npm run codegen` from repo root (uses local cca crate; do not install cca globally)
 
-### Hand-Maintained Files That Look Generated
-These files are **hand-maintained** despite their location or comments:
-
-- `web/src/generated/protocol.ts` - Frontend-specific packet definitions. Keep in sync with `protocol/cca.yaml` manually.
-
 ## Project Structure
 
 ```
@@ -25,9 +20,9 @@ lutron-tools/
 ├── esphome/          # ESP32 firmware (CC1101 radio driver)
 ├── protocol/         # Protocol definitions
 │   ├── cca.yaml      # SOURCE OF TRUTH for packet definitions
+│   ├── protocol-ui.ts # Unified protocol module (imports from generated)
 │   └── generated/    # Auto-generated code (cca codegen)
 └── web/              # React frontend
-    └── src/generated/  # Hand-maintained frontend protocol utils
 ```
 
 ## Ports
@@ -55,8 +50,9 @@ In production, the backend on 5001 serves the built frontend from `web/dist`.
 When updating packet definitions:
 1. Edit `protocol/cca.yaml` (source of truth)
 2. Run `npm run codegen`
-3. Manually update `web/src/generated/protocol.ts` to match
-4. Rebuild frontend
+3. Rebuild frontend (`npm run build`)
+
+Both frontend and backend import from `protocol/protocol-ui.ts`, which re-exports from `protocol/generated/typescript/protocol.ts`. No manual sync needed.
 
 ## CCA Reverse Engineering Agent
 
