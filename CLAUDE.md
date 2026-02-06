@@ -119,13 +119,12 @@ curl -X POST http://localhost:5001/api/level \
 
 ## ESP32/ESPHome Development
 
-Use the `/esphome` skill for ESP32 firmware development:
+Use the ESPHome skills for device management:
 
 ```
-/esphome flash        # Compile and flash via OTA
-/esphome logs         # View live ESP32 logs
-/esphome compile      # Compile without flashing
-/esphome clean        # Clean build artifacts
+/esphome-compile    # Compile firmware
+/esphome-flash      # Compile + flash OTA to cca-proxy.local
+/esphome-logs       # Stream device logs
 ```
 
 Critical files:
@@ -148,12 +147,3 @@ Critical files:
 - `web/src/components/controls/*.tsx` - Control panel components
 - `backend/src/server.ts` - Backend server
 
-## Recording Vive Pairings
-
-To capture real Vive pairing packets for analysis:
-
-```bash
-./tools/record-vive-pairing.sh [filename]
-```
-
-This streams pairing-related packets to a JSONL file while you pair devices via the Vive app.
