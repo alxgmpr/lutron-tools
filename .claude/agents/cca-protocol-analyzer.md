@@ -342,7 +342,7 @@ Display hex data consistently with field annotations:
 ```
 Offset | Size | Field      | Value       | Confidence | Notes
 -------|------|------------|-------------|------------|------
-0      | 1    | type       | 88          | HIGH       | BTN_SHORT_A
+0      | 1    | type       | 88          | HIGH       | BTN_PRESS_A
 1      | 1    | sequence   | 0C          | HIGH       | +6 from previous
 2      | 4    | device_id  | 02 A2 4C 77 | HIGH       | Pico ID (big-endian)
 6      | 1    | protocol   | 21          | HIGH       | Always 0x21 for buttons
