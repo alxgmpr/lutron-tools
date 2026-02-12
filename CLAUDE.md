@@ -54,28 +54,6 @@ When updating packet definitions:
 
 Both frontend and backend import from `protocol/protocol-ui.ts`, which re-exports from `protocol/generated/typescript/protocol.ts`. No manual sync needed.
 
-## CCA Reverse Engineering Agent
-
-This project includes a specialized agent for CCA protocol reverse engineering. Use the `/cca` skill to invoke it.
-
-### Invoking the Agent
-
-```
-/cca analyze         # Analyze recent packets for patterns
-/cca decode <hex>    # Decode a specific packet
-/cca compare <type>  # Compare packets of the same type
-/cca unknown         # Find unknown packet types
-```
-
-### Agent Capabilities
-
-The CCA reverse engineering agent can:
-- Analyze TX/RX packet flows and timing
-- Identify patterns in packet data
-- Decode unknown byte fields
-- Map device relationships (IDs, bridges, subnets)
-- Propose protocol definition updates
-
 ### Packet Analyzer Tool
 
 ```bash
@@ -127,19 +105,4 @@ Critical files:
 - `esphome/cca-proxy.yaml` - Main ESPHome configuration
 - `esphome/custom_components/cc1101_cca/cc1101_cca.cpp` - CC1101 driver
 - `esphome/udp_stream.h` - UDP packet relay
-
-## Web Control Panel Development
-
-Use the `/control-panel` skill for frontend/backend development:
-
-```
-/control-panel build    # Build production frontend
-/control-panel dev      # Start frontend dev server
-/control-panel backend  # Start backend server
-```
-
-Critical files:
-- `web/src/App.tsx` - Main React application
-- `web/src/components/controls/*.tsx` - Control panel components
-- `backend/src/server.ts` - Backend server
 
