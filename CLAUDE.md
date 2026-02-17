@@ -91,7 +91,7 @@ rtl_sdr -f 433602844 -s 2000000 -g 40 <output.bin>
 
 This split explains why pico set-level has no fade control — it uses the DEVICE path which lacks a fade field.
 
-**CCA packet lengths**: type byte 0x80-0x9F = 24 bytes (22 data + 2 CRC), type 0xA0+ = 53 bytes (51 data + 2 CRC). All long packets must be padded with 0xCC (not 0x00).
+**CCA packet lengths**: type byte 0x80-0x9F = 24 bytes (22 data + 2 CRC), type 0xA0+ = 53 bytes (51 data + 2 CRC). Long packet padding uses 0x00.
 
 **Level encoding**: `level16 = percent * 0xFEFF / 100` (shared across CCA and CCX).
 
