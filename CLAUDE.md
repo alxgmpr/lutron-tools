@@ -11,7 +11,7 @@ Lutron reverse-engineering toolkit: RF transceiver, protocol analyzer, and contr
 
 ## Architecture
 
-STM32H723 Nucleo is the primary platform. It runs dual radios (CC1101 for CCA, nRF52840 for CCX), Ethernet (lwIP), and FreeRTOS. The host CLI (`cli/nucleo.ts`) connects over TCP for packet streaming and commands.
+STM32H723 Nucleo is the primary platform. It runs dual radios (CC1101 for CCA, nRF52840 for CCX), Ethernet (lwIP), and FreeRTOS. The host CLI (`cli/nucleo.ts`) connects over UDP for packet streaming and commands.
 
 ```
   CC1101 (CCA)  ──┐                              ┌── Interactive shell (USART3/ST-LINK VCP)
@@ -21,18 +21,15 @@ STM32H723 Nucleo is the primary platform. It runs dual radios (CC1101 for CCA, n
 
 ### Directory Layout
 
-| Directory | Runtime | Purpose |
-|-----------|---------|---------|
-| `firmware/` | STM32 C/C++ (FreeRTOS, lwIP) | Radio drivers, protocol engine, TCP stream, shell |
-| `cli/nucleo.ts` | Bun | Primary UI — TCP client, interactive shell, packet decoder |
-| `tools/` | Bun/TypeScript, Python | CLI utilities (RTL-SDR decoder, LEAP dump, codegen, analyzers) |
-| `protocol/` | YAML + generated TS | CCA/CCX protocol definitions (single source of truth) |
-| `ccx/` | TypeScript | CCX protocol encoder/decoder/config |
-| `src/ot-nrf528xx/` | C (Zephyr) | OpenThread RCP firmware for nRF52840 (git submodule) |
-| `db/` | Python | SQLite extraction from .ra3/.hw project files |
-| `proxy/` | Node.js | Lutron Designer API proxy (feature unlocking) |
-| `captures/` | — | RF capture files (RTL-SDR .bin, session logs) |
-| `docs/` | — | Protocol documentation (start with `lutron-rf-overview.md`) |
+| Directory          | Runtime                      | Purpose                                                        |
+| ------------------ | ---------------------------- | -------------------------------------------------------------- |
+| `firmware/`        | STM32 C/C++ (FreeRTOS, lwIP) | Radio drivers, protocol engine, TCP stream, shell              |
+| `cli/nucleo.ts`    | Bun                          | Primary UI — TCP client, interactive shell, packet decoder     |
+| `tools/`           | Bun/TypeScript, Python       | CLI utilities (RTL-SDR decoder, LEAP dump, codegen, analyzers) |
+| `protocol/`        | YAML + generated TS          | CCA/CCX protocol definitions (single source of truth)          |
+| `ccx/`             | TypeScript                   | CCX protocol encoder/decoder/config                            |
+| `captures/`        | —                            | RF capture files (RTL-SDR .bin, session logs)                  |
+| `docs/`            | —                            | Protocol documentation (start with `lutron-rf-overview.md`)    |
 
 ### Protocol Definitions
 
