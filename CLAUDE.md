@@ -99,4 +99,3 @@ This split explains why pico set-level has no fade control — it uses the DEVIC
 - RTL-SDR captures use 2 MHz sample rate: `rtl_sdr -f 433602844 -s 2000000 -g 40 <output.bin>`
 - CC1101 variable-length mode only captures packets matching its configured sync/length — use RTL-SDR to see everything
 - Nucleo shell is on USART3 (ST-LINK VCP) — connect via serial terminal or use CLI text passthrough
-- TCP stream port is 9433 (binary framing, up to 4 concurrent clients)
