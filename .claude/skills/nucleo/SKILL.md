@@ -12,14 +12,14 @@ user_invocable: false
 ## Hardware Setup
 
 ```
-  CC1101 (SPI1)  ───┐                                 ┌── USART3 (ST-LINK VCP) → serial shell
+  CC1101 (SPI3)  ───┐                                 ┌── USART3 (ST-LINK VCP) → serial shell
   433 MHz CCA       ├── STM32H723ZG Nucleo-144 ───────┤
-  nRF52840 (SPI6) ──┘   FreeRTOS + lwIP               ├── Ethernet (LAN8742A) → TCP/UDP :9433
+  nRF52840 (USART2)─┘   FreeRTOS + lwIP               ├── Ethernet (LAN8742A) → TCP/UDP :9433
   802.15.4 CCX           ARM Cortex-M7 @ 550 MHz       └── UDP stream → Bun CLI (cli/nucleo.ts)
 ```
 
-- **CC1101**: 433 MHz FSK transceiver for CCA (Clear Connect Type A). SPI1, GDO0/GDO2 interrupt pins.
-- **nRF52840**: 802.15.4 radio for CCX (Clear Connect Type X / Thread). SPI6 via Spinel/HDLC NCP protocol.
+- **CC1101**: 433 MHz FSK transceiver for CCA (Clear Connect Type A). SPI3 (PC10 SCK, PC11 MISO, PC12 MOSI, PA4 CS), GDO0 interrupt (PA0).
+- **nRF52840**: 802.15.4 radio for CCX (Clear Connect Type X / Thread). USART2 (PD5 TX, PD6 RX) at 460800 baud, Spinel/HDLC NCP protocol. This is a dongle soldered to the Nucleo — its USB is NOT connected to the Mac. See `/hardware` skill for full topology.
 - **Ethernet**: LAN8742A PHY, lwIP TCP/IP stack. Nucleo IP: `10.0.0.3`.
 - **USART3**: ST-LINK Virtual COM Port — interactive shell with line editing and history.
 
@@ -139,7 +139,7 @@ The CoAP commands accept addresses in three formats:
 | `ot addrtable` | Get address table |
 | `ot ifconfig [up\|down]` | Interface up/down |
 | `ot thread [start\|stop]` | Thread start/stop |
-| `ot reset` | NCP reset |
+| `ot reset` | **DANGEROUS** — can brick NCP into DFU bootloader. NEVER USE. |
 
 ## CLI (Host Side)
 
