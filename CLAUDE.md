@@ -33,9 +33,15 @@ Lutron reverse-engineering toolkit: RF transceiver, protocol analyzer, and contr
 
 ### Protocol Definitions
 
-`protocol/cca.yaml` is the single source of truth for CCA packet structure. `tools/codegen.ts` generates `protocol/generated/typescript/protocol.ts` from it. `protocol/protocol-ui.ts` is the runtime module used by the CLI for packet identification and field parsing.
+TypeScript definition files are the single source of truth — no YAML, no generated TS.
 
-`protocol/ccx.yaml` defines CCX (Thread) message types. `ccx/` has its own encoder/decoder/types/constants.
+- `protocol/dsl.ts` — Builder types and functions for defining protocol structures
+- `protocol/shared.ts` — Cross-protocol encoding (level ↔ percent, fade ↔ quarter-seconds)
+- `protocol/cca.protocol.ts` — CCA definitions: enums, packet types, field layouts, QS Link constants, sequences
+- `protocol/ccx.protocol.ts` — CCX definitions: message types, body keys, CBOR schemas, level/port constants
+- `protocol/protocol-ui.ts` — Runtime parsing (identifyPacket, parseFieldValue) — imports from `cca.protocol.ts`
+- `ccx/constants.ts` — Thin re-export layer from `ccx.protocol.ts` (encoder/decoder import from here)
+- `tools/codegen.ts` — Imports TS defs → emits `firmware/src/cca/cca_generated.h` + `firmware/src/ccx/ccx_generated.h`
 
 ### Firmware
 
@@ -61,12 +67,12 @@ Key firmware modules:
 ```bash
 # TypeScript tools (all run directly with Bun, no build step)
 bun run cli/nucleo.ts               # Connect to Nucleo interactive shell
-bun run tools/codegen.ts            # Regenerate protocol.ts from cca.yaml
+bun run tools/codegen.ts            # Regenerate C headers from TS protocol defs
 bun run tools/ccx-sniffer.ts --live # Sniff Thread traffic
 bun run tools/leap-dump.ts          # Dump LEAP device hierarchy
 
 # NPM script shortcuts
-bun run codegen        # Regenerate protocol definitions
+bun run codegen        # Regenerate C headers from TS protocol defs
 bun run ccx:sniff      # Sniff Thread traffic
 bun run ccx:send       # Send CCX commands
 bun run leap:dump      # Dump LEAP hierarchy
