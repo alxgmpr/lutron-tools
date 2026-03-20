@@ -140,6 +140,44 @@ Biome handles both linting and formatting. Config in `biome.json`:
 - 2-space indent, spaces not tabs
 - Relaxed rules: `noExplicitAny` off, `noNonNullAssertion` off, `useTemplate` off, `useNodejsImportProtocol` off
 
+## CCX→WiZ Bridge
+
+The bridge captures Lutron Thread traffic and forwards level/scene/button commands to WiZ smart bulbs.
+
+### Deployment
+
+- **Production**: HA local add-on at 10.0.0.4 — all config (pairings, Thread creds, warm dim) in HA UI
+- **Dev/standalone**: `config/ccx-bridge.yaml` + Docker or local `npx tsx bridge/main.ts --serial`
+- **Deploy script**: `./bridge/deploy-ha.sh /Volumes/config /Volumes/addons` (SMB to HA)
+- LEAP data files go to `/config/ccx-bridge/` on HA (separate from add-on source)
+
+### Key constraints
+
+- Bridge is a **passive Thread sniffer** — NEVER suggest LEAP subscriptions/polling
+- Sunnata/Darter devices are ALWAYS CCX (link type 40), never CCA
+- nRF sniffer dongle crashes under burst load — 30s watchdog auto-reconnects
+- Pi5 USB autosuspend kills dongle — `run.sh` disables it at boot
+
+## Project Conventions
+
+- **Use Node.js, not Bun** for new tools — Bun lacks AES-128-CCM and other ciphers; use `npx tsx`
+- **Add tests** for new modules, especially unattended code like bridge (`node --import tsx --test test/**/*.test.ts`)
+- **NEVER use `st-flash`** — always use `make flash` (openocd) for STM32 programming
+
+## Network Topology
+
+| Host | IP | Purpose |
+|------|-----|---------|
+| RA3 processor | 10.0.0.1 | LEAP API, Thread network |
+| Caseta | 10.0.0.2 | LEAP API |
+| Nucleo | 10.0.0.3 | TCP:9433, CCA+CCX radio |
+| Home Assistant | 10.0.0.4 | CCX→WiZ bridge add-on, SMB, SSH |
+| Designer VM | 192.168.64.4 | UTM/NAT, key auth |
+
+## Claude Context
+
+Operational knowledge, deployment notes, and reverse engineering findings are in `docs/claude-context/`. The `MEMORY.md` index there describes all files. These supplement the protocol docs in `docs/`.
+
 ## Environment Notes
 
 - RTL-SDR captures use 2 MHz sample rate: `rtl_sdr -f 433602844 -s 2000000 -g 40 <output.bin>`
