@@ -1,7 +1,10 @@
 ---
 name: designer-unlock
 description: Unlock all devices across all platforms in Designer toolbox
-disable-model-invocation: true
+metadata:
+  author: alex
+  version: "1.0"
+user_invocable: true
 ---
 
 # Designer Unlock — Universal Toolbox Unlock

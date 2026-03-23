@@ -1,3 +1,12 @@
+---
+name: designer-re
+description: "Reverse Engineering Lutron Designer Libraries — decompile .NET DLLs, analyze enums, cross-reference with Designer DB"
+metadata:
+  author: alex
+  version: "1.0"
+user_invocable: false
+---
+
 # Reverse Engineering Lutron Designer Libraries
 
 Decompile and analyze .NET DLLs from Lutron Designer to understand internal systems (account gating, device models, protocol handling, feature flags, etc.).

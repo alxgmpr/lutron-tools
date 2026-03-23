@@ -5,7 +5,7 @@ metadata:
   author: alexgompper
   version: "1.0.0"
   argument-hint: "<ot|sniffer|capture> [capture args...]"
-user_invocable: true
+user_invocable: false
 ---
 
 # nRF52840 USB Dongle — Sniffer / RCP / Capture
