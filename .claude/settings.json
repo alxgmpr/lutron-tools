@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command' | { read -r cmd; echo \"$cmd\" | grep -q 'git commit' || exit 0; npm run lint >&2 && npm run typecheck >&2 && npm run test:ts >&2 && mkdir -p firmware/build && make -C firmware test >&2 && npm run codegen:check >&2 || printf '{\"continue\":false,\"stopReason\":\"Local CI checks failed — fix errors before committing.\"}'; }",
+            "timeout": 120,
+            "statusMessage": "Running local CI checks..."
+          }
+        ]
+      }
+    ]
+  }
+}
