@@ -72,7 +72,7 @@ Print:
 ## Key Facts
 
 - **Output file**: `data/preset-zones.json`
-- **Consumer**: `tools/ccx-bridge.ts` loads this at startup for scene BUTTON_PRESS handling
+- **Consumer**: `bridge/main.ts` loads this at startup for scene BUTTON_PRESS handling
 - **Includes virtual zones**: Unlike transfer capture decoding, the DB query gets ALL zones including virtual/digital devices not activated on the Thread mesh
 - **Re-run when**: Scenes are modified in Designer, new zones added, or preset levels changed
 - **DB tables**: `tblPresetAssignment` (ParentID=PresetID, AssignableObjectID=ZoneID), `tblAssignmentCommandParameter` (ParentId=PresetAssignmentID), `tblPreset`, `tblZone`

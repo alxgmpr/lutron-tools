@@ -15,7 +15,7 @@ Captures Lutron CCX (Thread/802.15.4) traffic via nRF sniffer and forwards dimmi
 
 | File | Purpose |
 |------|---------|
-| `tools/ccx-bridge.ts` | Main bridge — tshark capture → CBOR decode → WiZ UDP |
+| `bridge/main.ts` | Main bridge — tshark capture → CBOR decode → WiZ UDP |
 | `tools/wiz-test.ts` | Manual WiZ bulb control (getPilot/setPilot) |
 | `lib/warm-dim.ts` | B-spline warm dimming curves (brightness → Kelvin) |
 | `config/ccx-bridge.example.json` | Config template with all options |
@@ -25,10 +25,10 @@ Captures Lutron CCX (Thread/802.15.4) traffic via nRF sniffer and forwards dimmi
 
 ```bash
 # Start bridge (requires nRF sniffer dongle — see /nrf sniffer)
-npx tsx tools/ccx-bridge.ts                          # uses data/virtual-device.json
-npx tsx tools/ccx-bridge.ts --config config/my.json  # custom config
-npx tsx tools/ccx-bridge.ts --decrypt                # native MAC decryption (no Wireshark keys needed)
-npx tsx tools/ccx-bridge.ts -v                       # verbose logging
+npx tsx bridge/main.ts --serial                      # uses data/virtual-device.json
+npx tsx bridge/main.ts --config config/my.json       # custom config
+npx tsx bridge/main.ts --decrypt                     # native MAC decryption (no Wireshark keys needed)
+npx tsx bridge/main.ts -v                            # verbose logging
 
 # Test WiZ bulb directly
 bun run tools/wiz-test.ts              # getPilot (query state)
@@ -133,7 +133,7 @@ Pico raise/lower buttons trigger software-simulated ramps:
 ```
 nRF sniffer dongle (802.15.4 ch25)
   → tshark (pcap pipe or live capture)
-  → ccx-bridge.ts (CBOR decode + dedup + zone matching)
+  → bridge/main.ts (CBOR decode + dedup + zone matching)
   → WiZ bulb (UDP:38899 setPilot JSON)
 ```
 

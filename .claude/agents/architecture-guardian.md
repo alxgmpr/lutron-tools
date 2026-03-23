@@ -85,7 +85,7 @@ When asked to evaluate an architectural decision:
 - Be concrete and specific. Name files, directories, and types.
 - When recommending changes, provide a step-by-step implementation plan.
 - When identifying risks, explain the specific failure mode (e.g., "If the frontend protocol.ts isn't updated, button press packets will fail to decode because the new field offset shifts all subsequent fields").
-- Use the existing project tools (`npm run codegen`, `npm run cca`, `bun run tools/packet-analyzer.ts`) in your recommendations.
+- Use the existing project tools (`npm run codegen`, `npm run cca`) in your recommendations.
 - When spinning up new tools, provide complete implementations that follow existing patterns in the codebase.
 
 ## Anti-Patterns to Flag

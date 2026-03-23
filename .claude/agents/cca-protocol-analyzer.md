@@ -362,7 +362,6 @@ Offset | Size | Field      | Value       | Confidence | Notes
 - `docs/vive-zone-encoding-problem.md` - Unresolved zone encoding issue
 - `docs/ra3-reverse-engineering.md` - LEAP API, firmware, and hardware findings
 - `tools/rtlsdr-cca-decode.ts` - Custom RTL-SDR demodulator (full pipeline: IQ -> FM discriminator -> bit slice -> N81 decode -> CRC verify)
-- `tools/packet-analyzer.ts` - CLI tool for packet analysis from live backend
 - `npm run cca -- decode "88 0C..."` - Decode packets using current definitions
 - `esphome/custom_components/cc1101_cca/cc1101_cca.cpp` - ESP32 TX/RX implementation
 
