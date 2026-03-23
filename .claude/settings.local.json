@@ -169,7 +169,10 @@
       "Bash(node:*)",
       "Bash(npx tsx:*)",
       "Bash(npx:*)",
-      "Bash(scp:*)"
+      "Bash(scp:*)",
+      "Bash(npm list:*)",
+      "Skill(update-config)",
+      "mcp__claude_ai_Linear__list_teams"
     ]
   },
   "enableAllProjectMcpServers": true,
