@@ -32,22 +32,15 @@ ls /dev/tty.usbmodem*
 ```
 
 #### 3. Flash RCP firmware
-The DFU package must be generated from the ELF first:
+Build the NCP/RCP firmware using the build script (clones OpenThread, applies Nucleo UART patch):
 ```bash
-/Applications/ArmGNUToolchain/15.2.rel1/arm-none-eabi/bin/arm-none-eabi-objcopy -O ihex \
-  ~/lutron-tools/src/ot-nrf528xx/build/nrf52840-usb/bin/ot-rcp /tmp/ot-rcp.hex
-
-nrfutil nrf5sdk-tools pkg generate --hw-version 52 --sd-req 0x00 \
-  --application /tmp/ot-rcp.hex --application-version 1 /tmp/ot-rcp-dfu.zip
-
-nrfutil nrf5sdk-tools dfu usb-serial -pkg /tmp/ot-rcp-dfu.zip -p <PORT>
+tools/nrf-ncp/build.sh
+# Output: build/ot-ncp-ftd-nucleo.zip
 ```
 
-If the RCP firmware needs rebuilding:
+Flash the DFU package:
 ```bash
-cd ~/lutron-tools/src/ot-nrf528xx
-PATH="/Applications/ArmGNUToolchain/15.2.rel1/arm-none-eabi/bin:$PATH" \
-  OT_CMAKE_BUILD_DIR=build/nrf52840-usb ./script/build nrf52840 USB_trans -DOT_BOOTLOADER=USB
+nrfutil nrf5sdk-tools dfu usb-serial -pkg build/ot-ncp-ftd-nucleo.zip -p <PORT>
 ```
 
 #### 4. Find the new serial port (changes after flash)
@@ -88,7 +81,7 @@ Once joined, you can:
 ### Key Facts (RCP mode)
 - **Thread credentials**: channel 25, PAN ID 0xXXXX, in .env file
 - **ot-daemon binaries**: `~/bin/ot-daemon`, `~/bin/ot-ctl`
-- **RCP firmware source**: `~/lutron-tools/src/ot-nrf528xx/`
+- **RCP firmware build**: `tools/nrf-ncp/build.sh` (clones ot-nrf528xx, applies patch, builds)
 - **Socket**: `/tmp/openthread-utun<N>.sock` (auto-created by ot-daemon)
 
 ---
