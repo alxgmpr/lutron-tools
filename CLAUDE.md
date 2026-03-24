@@ -172,7 +172,7 @@ The bridge captures Lutron Thread traffic and forwards level/scene/button comman
 | Caseta | 10.0.0.2 | LEAP API |
 | Nucleo | 10.0.0.3 | TCP:9433, CCA+CCX radio |
 | Home Assistant | 10.0.0.4 | CCX→WiZ bridge add-on, SMB, SSH |
-| Designer VM | 192.168.64.4 | UTM/NAT, key auth |
+| Designer VM | 10.0.0.5 | UTM/NAT, key auth |
 
 ## Claude Context
 
