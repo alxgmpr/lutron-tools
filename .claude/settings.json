@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.command' | { read -r cmd; echo \"$cmd\" | grep -q 'git commit' || exit 0; export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=submodule.recurse GIT_CONFIG_VALUE_0=false; failed=''; npm run lint >&2 || failed=\"$failed lint\"; npm run typecheck >&2 || failed=\"$failed typecheck\"; npm run test:ts >&2 || failed=\"$failed test:ts\"; mkdir -p firmware/build && make -C firmware test >&2 || failed=\"$failed firmware-test\"; npm run codegen:check >&2 || failed=\"$failed codegen:check\"; if [ -n \"$failed\" ]; then printf '{\"continue\":false,\"stopReason\":\"CI failed:%s — fix these before committing.\"}' \"$failed\"; fi; }",
+            "command": "jq -r '.tool_input.command' | { read -r cmd; echo \"$cmd\" | grep -q 'git commit' || exit 0; export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=submodule.recurse GIT_CONFIG_VALUE_0=false; failed=''; npm run lint >&2 || failed=\"$failed lint\"; npm run typecheck >&2 || failed=\"$failed typecheck\"; npm run test:ts >&2 || failed=\"$failed test:ts\"; mkdir -p firmware/build && make -C firmware test >&2 || failed=\"$failed firmware-test\"; npm run codegen >&2 && git add firmware/src/cca/cca_generated.h firmware/src/ccx/ccx_generated.h 2>/dev/null; if [ -n \"$failed\" ]; then printf '{\"continue\":false,\"stopReason\":\"CI failed:%s — fix these before committing.\"}' \"$failed\"; fi; }",
             "timeout": 120,
             "statusMessage": "Running local CI checks..."
           }
