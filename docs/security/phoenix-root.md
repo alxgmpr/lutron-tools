@@ -498,7 +498,7 @@ This produces `emmc-read.bin` (~3KB) -- a standalone ARM program wrapped with an
 #### Step 2: Deploy to Pi
 
 ```
-PI=alex@10.0.0.6
+PI=user@10.0.0.6
 scp -i ~/.ssh/id_ed25519_pi emmc-read.bin $PI:~/
 scp -i ~/.ssh/id_ed25519_pi phoenix-emmc-dump.py $PI:~/emmc-dump.py
 scp -i ~/.ssh/id_ed25519_pi phoenix-emmc-extract.py $PI:~/emmc-extract.py
