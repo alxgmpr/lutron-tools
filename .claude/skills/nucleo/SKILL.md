@@ -15,7 +15,7 @@ user_invocable: false
   CC1101 (SPI3)  ───┐                                 ┌── USART3 (ST-LINK VCP) → serial shell
   433 MHz CCA       ├── STM32H723ZG Nucleo-144 ───────┤
   nRF52840 (USART2)─┘   FreeRTOS + lwIP               ├── Ethernet (LAN8742A) → TCP/UDP :9433
-  802.15.4 CCX           ARM Cortex-M7 @ 550 MHz       └── UDP stream → Bun CLI (cli/nucleo.ts)
+  802.15.4 CCX           ARM Cortex-M7 @ 550 MHz       └── UDP stream → CLI (cli/nucleo.ts)
 ```
 
 ### Physical Devices
@@ -80,7 +80,7 @@ user_invocable: false
 
 ## Radio Hardware
 
-- **CC1101**: 433 MHz FSK transceiver for CCA (Clear Connect Type A). SPI3 (PC10 SCK, PC11 MISO, PC12 MOSI, PA4 CS), GDO0 interrupt (PA0).
+- **CC1101**: 433 MHz FSK transceiver for CCA (Clear Connect Type A). SPI3 (PC10 SCK, PC11 MISO, PC12 MOSI, PA4 CS), GDO0 interrupt (PA0), GDO2 backup interrupt (PC15).
 - **nRF52840**: 802.15.4 radio for CCX (Clear Connect Type X / Thread). USART2 (PD5 TX, PD6 RX) at 460800 baud, Spinel/HDLC NCP protocol. This is a dongle soldered to the Nucleo — its USB is NOT connected to the Mac.
 - **Ethernet**: LAN8742A PHY, lwIP TCP/IP stack. Nucleo IP: `10.0.0.3`.
 - **USART3**: ST-LINK Virtual COM Port — interactive shell with line editing and history.
@@ -113,9 +113,9 @@ Output ELF: `firmware/build/lutron-nucleo.elf`.
 
 | Task | File | Priority | Purpose |
 |------|------|----------|---------|
-| `cca_task` | `firmware/src/cca/cca_task.c` | 3 | CC1101 RX/TX, CCA packet processing, command queue |
+| `cca_task` | `firmware/src/cca/cca_task.cpp` | 3 | CC1101 RX/TX, CCA packet processing, command queue |
 | `ccx_task` | `firmware/src/ccx/ccx_task.cpp` | 3 | nRF52840 Spinel NCP, Thread join, CCX multicast + CoAP unicast |
-| `stream_task` | `firmware/src/net/stream.c` | 2 | UDP packet stream to CLI clients (port 9433, binary framing) |
+| `stream_task` | `firmware/src/net/stream.cpp` | 2 | UDP packet stream to CLI clients (port 9433, binary framing) |
 | `shell_task` | `firmware/src/shell/shell.cpp` | 1 | UART interactive shell |
 | `eth_task` | `firmware/src/net/eth.c` | 2 | lwIP Ethernet, link polling |
 
@@ -207,8 +207,8 @@ The CoAP commands accept addresses in three formats:
 
 ```bash
 # Connect to Nucleo
-bun run cli/nucleo.ts              # uses NUCLEO_HOST env var
-bun run cli/nucleo.ts 10.0.0.3   # direct IP
+npx tsx cli/nucleo.ts              # uses NUCLEO_HOST env var
+npx tsx cli/nucleo.ts 10.0.0.3   # direct IP
 
 # Environment
 NUCLEO_HOST=10.0.0.3             # default Nucleo IP
@@ -227,21 +227,21 @@ The CLI connects over UDP port 9433. Features:
 
 | File | Purpose |
 |------|---------|
-| `firmware/src/cca/cca_task.c` | CCA RX/TX task, command queue, packet processing |
+| `firmware/src/cca/cca_task.cpp` | CCA RX/TX task, command queue, packet processing |
 | `firmware/src/cca/cc1101.c` | CC1101 SPI driver, register config, RX/TX |
-| `firmware/src/cca/n81_codec.c` | CCA N81 bit encoding/decoding |
-| `firmware/src/cca/cca_crc.c` | CCA CRC-16 calculation |
-| `firmware/src/cca/cca_commands.c` | CCA command builders (button, level, pair, config) |
+| `firmware/src/cca/cca_tdma.cpp` | TDMA timing, slot tracking |
+| `firmware/src/cca/cca_commands.cpp` | CCA command builders (button, level, pair, config) |
+| `firmware/src/cca/cca_pairing.cpp` | CCA pairing engine (bridge, pico, vive, hybrid) |
 | `firmware/src/ccx/ccx_task.cpp` | CCX task: Thread join, multicast TX, CoAP unicast, peer table |
 | `firmware/src/ccx/coap.c` | CoAP message builder (GET/PUT/POST with CBOR payload) |
 | `firmware/src/ccx/ipv6_udp.c` | IPv6/UDP packet construction, checksum |
 | `firmware/src/ccx/ccx_msg.c` | CCX CBOR message encoder (LEVEL_CONTROL, SCENE_RECALL) |
 | `firmware/src/ccx/ccx_cbor.c` | Minimal CBOR encoder |
 | `firmware/src/ccx/smp_serial.c` | SMP DFU over Spinel (nRF firmware update) |
-| `firmware/src/net/stream.c` | UDP stream server (binary framing, multi-client) |
+| `firmware/src/net/stream.cpp` | UDP stream server (binary framing, multi-client) |
 | `firmware/src/net/eth.c` | lwIP Ethernet init, link management |
 | `firmware/src/shell/shell.cpp` | UART shell with line editing, history, all commands |
-| `firmware/src/storage/flash_store.c` | Flash persistence (device IDs, Thread credentials) |
+| `firmware/src/storage/flash_store.cpp` | Flash persistence (device IDs, Thread credentials) |
 
 ## Protocol Encoding Quick Reference
 
@@ -330,25 +330,25 @@ cd firmware && make flash
 
 ### Test a CCA command
 ```bash
-bun run cli/nucleo.ts
+npx tsx cli/nucleo.ts
 # In CLI: cca level <zone> <target> 50
 ```
 
 ### Test a CCX command
 ```bash
-bun run cli/nucleo.ts
+npx tsx cli/nucleo.ts
 # In CLI: ccx level <zone> 75
 ```
 
 ### Send CoAP to a device
 ```bash
-bun run cli/nucleo.ts
+npx tsx cli/nucleo.ts
 # In CLI: ccx coap aha fd0d:02ef:a82c:0000:XXXX:XXXX:XXXX:XXXX 150 20
 ```
 
 ### Check Thread network status
 ```bash
-bun run cli/nucleo.ts
+npx tsx cli/nucleo.ts
 # In CLI: ccx
 # In CLI: ot
 # In CLI: ccx peers
@@ -356,7 +356,7 @@ bun run cli/nucleo.ts
 
 ### Debug CC1101 radio
 ```bash
-bun run cli/nucleo.ts
+npx tsx cli/nucleo.ts
 # In CLI: status
 # In CLI: cca tune show
 # In CLI: cca tune reg get 0x04
