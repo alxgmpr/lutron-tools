@@ -69,24 +69,15 @@ FSCTRL1=0x06  MCSM1=0x0F  MCSM0=0x18  AGCCTRL0=0x91
 TEST2=0xAC    PKTCTRL1=0x00  PKTCTRL0=0x00  FIFOTHR=0x07
 ```
 
-**Rule: NEVER batch CC1101 register changes.** Change ONE register, clean build (`rm -rf build`), flash, test pico RX, confirm working, commit. Then change the next.
+**Rule: NEVER batch CC1101 register changes.** Change ONE register, build, flash, test pico RX, confirm working, commit. Then change the next.
 
-### 2. Build Cache (Stale Object Files)
-
-**Always nuke the build directory before building firmware:**
-```bash
-cd firmware && rm -rf build && cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake && make -C build -j8
-```
-
-Incremental builds (`make -C build`) can link stale .o files that reference old struct layouts, wrong function signatures, or missing symbols. This causes silent runtime failures — the firmware boots, shell works, but CCA behavior is wrong.
-
-### 3. CC1101 Needs Power Cycle
+### 2. CC1101 Needs Power Cycle
 
 If firmware reverts don't fix RX, the CC1101 may be stuck in a bad analog state. The SRES strobe in `cc1101_init()` resets digital registers but not always the analog front-end.
 
 **Fix:** Physically unplug the Nucleo USB cable, wait 5 seconds, plug back in. This is the only way to guarantee a full CC1101 power-on reset.
 
-### 4. Task Crash in RX Callback
+### 3. Task Crash in RX Callback
 
 If `on_rx_packet()` crashes (e.g., decoder bug, stack overflow, null deref), the CCA FreeRTOS task dies silently. Symptoms:
 - Shell still works (different task)
@@ -96,7 +87,7 @@ If `on_rx_packet()` crashes (e.g., decoder bug, stack overflow, null deref), the
 
 The CCA task has 2048 bytes of stack. The decoder allocates ~200 bytes per decode attempt (decoded[56] + tolerant[56] + tracked[56] + err arrays). Deep call chains can overflow.
 
-### 5. Decoder Changes Breaking Packet Parsing
+### 4. Decoder Changes Breaking Packet Parsing
 
 The decoder in `cca_decoder.h` runs in the RX hot path. New decoder code (e.g., additional fallback paths) adds CPU time per packet. If decode takes too long, the CC1101 FIFO overflows before the next `cc1101_check_rx()` call.
 
@@ -152,8 +143,7 @@ When making firmware changes that could affect RX:
 
 1. **Baseline**: Confirm picos work before any changes
 2. **One change at a time**: Make exactly one functional change
-3. **Clean build**: `rm -rf build && cmake ... && make ...`
-4. **Flash and test**: `make flash`, press picos, check `status` counters
+3. **Build and flash**: `make flash`, press picos, check `status` counters
 5. **Commit if good**: Lock in the working state before the next change
 6. **If broken**: `git checkout HEAD -- firmware/` to revert, rebuild, reflash, confirm recovery
 
