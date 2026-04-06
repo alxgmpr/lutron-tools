@@ -1,6 +1,6 @@
 # Lutron PKI & Certificate Architecture
 
-Comprehensive map of every certificate, key, and trust chain in the Lutron ecosystem, based on reverse engineering the iOS app, Lutron Designer .NET binary, processor TLS handshakes, and project database extraction.
+Certificate chains, keys, and trust relationships across the Lutron ecosystem, documented from the iOS app, Lutron Designer .NET binary, processor TLS handshakes, and project database extraction.
 
 ## TL;DR: What's Shareable?
 
