@@ -4,7 +4,7 @@ Bypasses Lutron Designer's online authentication and feature flag requirements f
 
 ## Quick Start
 
-Apply 11 IL patches to `Lutron.Gulliver.QuantumResi.dll` (the main Designer executable). No other DLLs need modification. Rollout connectivity is NOT required.
+Apply 3 IL patches to `Lutron.Gulliver.QuantumResi.dll` and 2 patches to `Lutron.Gulliver.FeatureFlagServiceProvider.dll`. Rollout connectivity is NOT required. Flag overrides persist to `featureOverrides.json`.
 
 ### Prerequisites
 
@@ -57,24 +57,39 @@ Before: 4E           tiny header (19-byte body)
 After:  0A 17 2A     tiny header (2-byte body): ldc.i4.1; ret
 ```
 
-#### Patches 4-11: Override service null safety
+### FeatureFlagServiceProvider.dll Patches
 
-The `FeatureFlagOverrideService` is null when `EnableFeatureFlagOverride` is false. These 8 methods call the null service and crash. Each is patched to return a safe default.
+These patches make the `FeatureFlagOverrideService` always initialize, regardless of whether `EnableFeatureFlagOverride` is true in Rollout. With the service active, the real Get/Set/Clear methods work and overrides persist to `featureOverrides.json`.
 
-| # | Class | Method | RVA | File offset | Return | Patch bytes |
-|---|-------|--------|-----|-------------|--------|-------------|
-| 4 | `FeatureFlagBoolVM` | `GetOriginalValueInternal` | `0x2d8052` | `0x2d6252` | false | `0A 16 2A` |
-| 5 | `FeatureFlagBoolVM` | `SetOverrideInternal` | `0x2d8065` | `0x2d6265` | void | `06 2A` |
-| 6 | `FeatureFlagEnumVM` | `SetOverrideInternal` | `0x2d80ac` | `0x2d62ac` | void | `06 2A` |
-| 7 | `FeatureFlagEnumVM` | `GetOriginalValueInternal` | `0x2d80c0` | `0x2d62c0` | null | `0A 14 2A` |
-| 8 | `FeatureFlagStringVM` | `GetOriginalValueInternal` | `0x2d8784` | `0x2d6984` | null | `0A 14 2A` |
-| 9 | `FeatureFlagStringVM` | `SetOverrideInternal` | `0x2d8797` | `0x2d6997` | void | `06 2A` |
-| 10 | `FeatureFlagVMBase` | `GetHasOverrideInternal` | `0x2d892f` | `0x2d6b2f` | false | `0A 16 2A` |
-| 11 | `FeatureFlagVMBase` | `ClearOverrideInternal` | `0x2d8942` | `0x2d6b42` | void | `06 2A` |
+#### Patch A: Setup — bypass EnableFeatureFlagOverride check
 
-Patch bytes overwrite the tiny method header + first bytes of the original IL body. The `0A` header means 2-byte body, `06` means 1-byte body.
+**Class:** `CloudBeesFeatureFlagService`
+**Method:** `Setup` (RVA `0x21dc`)
+**Purpose:** The Setup method creates the `CloudBeesFlagOverrideService` only when `IsFeatureFlagEnabled(EnableFeatureFlagOverride)` returns true. Since this flag is gated behind internal target group `613284d4ad80af9adc351d99`, the service never initializes for external users. This patch consumes the check result without branching.
 
-Return value opcodes: `16` = ldc.i4.0 (false), `14` = ldnull, `17` = ldc.i4.1 (true), `2A` = ret.
+```
+File offset 0x43d:
+Before: 2C 21        brfalse.s +33 (skip service creation)
+After:  26 00        pop; nop (always create service)
+```
+
+#### Patch B: ResetOverrideService — bypass same check
+
+**Class:** `CloudBeesFeatureFlagService`
+**Method:** `ResetOverrideService` (RVA `0x230c`)
+**Purpose:** Same conditional pattern as Setup. Without this patch, the service cannot be re-created after a reset.
+
+```
+File offset 0x515:
+Before: 2C 21        brfalse.s +33
+After:  26 00        pop; nop
+```
+
+Also clear the `CLR_STRONGNAMESIGNED` flag in the CLR header (offset 0x218: clear bit 3) to prevent assembly load failure.
+
+#### Previous patches 4-11 (REMOVED)
+
+Earlier versions stubbed out 8 methods in QuantumResi.dll (`GetOriginalValueInternal`, `SetOverrideInternal`, `ClearOverrideInternal`, `GetHasOverrideInternal`) to avoid null-reference crashes when the override service was null. With the service now properly initialized by patches A and B, these stubs are no longer needed. The real methods handle persistence correctly.
 
 ## Architecture
 
@@ -161,11 +176,15 @@ C:\Program Files\WindowsApps\LutronElectronics.LutronDesigner26.2.0.113_26.2.0.1
 
 MSIX does NOT validate DLL integrity after `takeown` — patched DLLs load normally.
 
+## What's Working
+
+- **Override persistence** — toggling flags in the UI persists to `featureOverrides.json` via the `CloudBeesFlagOverrideService`. Survives Designer restarts.
+- **Original values** — the "Original Value" column shows real Rollout default values.
+- **All 262 flags** — the filter bypass (patch 3) shows all flags including `EnableFeatureFlagOverride` itself.
+
 ## What's Not Working Yet
 
-- **Override persistence** — the `SetOverrideInternal` methods are stubbed out (patches 5, 6, 9), so toggling flags in the UI doesn't persist. Needs the `FeatureFlagOverrideService` to be initialized or a replacement implementation.
 - **Synthetic auth** — `ldproxy` still proxies to real Lutron servers. Needs synthetic response mode for full offline operation.
-- **Original values** — `GetOriginalValueInternal` methods are stubbed (patches 4, 7, 8), so the "Original Value" column shows false/null instead of the real Rollout values.
 
 ## Approaches That Failed
 
