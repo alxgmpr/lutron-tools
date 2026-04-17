@@ -95,9 +95,7 @@ Earlier versions stubbed out 8 methods in QuantumResi.dll (`GetOriginalValueInte
 
 ### Authentication
 
-Designer authenticates via myLutron service endpoints. `ldproxy/server.js` intercepts auth responses and injects all 29 channel strings from the `ChannelTypes` enum, unlocking full product entitlements. See `ldproxy/README.md` for channel reference and VM routing setup.
-
-Currently requires real Lutron credentials and internet for the upstream auth call. A full offline jailbreak would replace the proxy with synthetic auth responses.
+Designer authenticates via myLutron service endpoints. Auth is bypassed offline by forging the `%APPDATA%\Lutron\Common\LutronData.bin` credential file with all 28 Display-named `ChannelTypes` strings — see `tools/auth-bypass/Program.cs` and `docs/security/designer-auth-bypass.md` for the full channel reference and file format. No internet or real Lutron credentials required.
 
 ### Feature Flags (Rollout/Rox SDK)
 
@@ -181,10 +179,6 @@ MSIX does NOT validate DLL integrity after `takeown` — patched DLLs load norma
 - **Override persistence** — toggling flags in the UI persists to `featureOverrides.json` via the `CloudBeesFlagOverrideService`. Survives Designer restarts.
 - **Original values** — the "Original Value" column shows real Rollout default values.
 - **All 262 flags** — the filter bypass (patch 3) shows all flags including `EnableFeatureFlagOverride` itself.
-
-## What's Not Working Yet
-
-- **Synthetic auth** — `ldproxy` still proxies to real Lutron servers. Needs synthetic response mode for full offline operation.
 
 ## Approaches That Failed
 

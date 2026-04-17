@@ -44,8 +44,8 @@ S3 bucket: `LutronDesigner`
 Pattern: `https://s3.amazonaws.com/LutronDesigner/{version}/Lutron+Designer+{version}.exe`
 
 The old Lutron Designer for HomeWorks QS, Quantum, Vive, and myRoom. NOT for RadioRA 2.
-NOT for RA3/HWQSX (those use the modern Designer below). Requires myLutron auth +
-channel injection via ldproxy for full product access.
+NOT for RA3/HWQSX (those use the modern Designer below). Requires myLutron auth
+(see `tools/auth-bypass/` for offline credential forging) for full product access.
 
 Auth endpoint: `designeruat.lutron.com/myLutron/myLutron.svc/Authenticate`
 
