@@ -1,159 +1,117 @@
 ---
 name: designer-unlock
-description: Unlock all devices across all platforms in Designer toolbox
-metadata:
-  author: alex
-  version: "1.0"
-user_invocable: true
+description: Unlock RA3 devices in HW toolbox by patching all validation gates
+disable-model-invocation: true
 ---
 
-# Designer Unlock — Universal Toolbox Unlock
+# Designer Unlock — RA3 Devices in HW Toolbox
 
-Makes all devices available across all product platforms in the Designer toolbox. Adds HW platform bits to all families/overrides, adds cross-platform models to the HW ProductMasterList, and adds HW LinkTypes to all link nodes.
+Makes RA3 devices (RRD-*, RRDE-*, RRT-*, RRST-*, RRL-*, RR-*) appear in the HomeWorks QSX project toolbox by patching four validation gates across two databases.
 
-**CRITICAL**: Both SQLMODELINFO.MDF and SQLREFERENCEINFO.MDF reset on every Designer restart. Run this AFTER Designer starts. Works with or without a project open — queries use fully-qualified `[dbname].dbo.table` syntax so any DB context works.
+**CRITICAL**: Both SQLMODELINFO.MDF and SQLREFERENCEINFO.MDF are reset from the MSIX package on every Designer restart. ALL patches must be applied AFTER Designer starts but BEFORE opening the project. Run this skill when the user is at the "remote services" prompt.
 
-## Step 1: Discover Database Names
+The MDF path prefix is: `[C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\`
 
-Call `mcp__designer-db__list_databases` to get current DB names. Find the two databases whose names end with `SQLMODELINFO.MDF` and `SQLREFERENCEINFO.MDF`. Use these as `{MODEL_DB}` and `{REF_DB}` in the queries below.
+Four gates, run all in order. Use `mcp__designer-db__query` for each.
 
-## Step 2: Run All 5 Gates
+## Gate 1: LinkTypes (SQLMODELINFO)
 
-Run all 5 queries in parallel using `mcp__designer-db__query`. All are additive and idempotent.
-
-### Gate 1: LinkTypes (SQLMODELINFO)
-
-Add HW LinkTypes 32/34/36 to every link node that lacks them.
+Adds LinkTypes 32 (MyRoom RF), 34 (MDU RF), 36 (HWQS GCU RF) to all RA3 link nodes that lack them. Excludes processors/repeaters.
 
 ```sql
-INSERT INTO [{MODEL_DB}].dbo.TBLLINKNODEINFOLINKTYPEMAP (LINKNODEINFOID, LINKTYPEID, SORTORDER)
+INSERT INTO [C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\SQLMODELINFO.MDF].dbo.TBLLINKNODEINFOLINKTYPEMAP (LINKNODEINFOID, LINKTYPEID, SORTORDER)
 SELECT DISTINCT lnm.LINKNODEINFOID, lt.LINKTYPEID, 1
-FROM [{MODEL_DB}].dbo.TBLLINKNODEINFOMODELINFOMAP lnm
+FROM [C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\SQLMODELINFO.MDF].dbo.TBLLINKNODEINFOMODELINFOMAP lnm
+JOIN [C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\SQLMODELINFO.MDF].dbo.TBLMODELINFO m ON lnm.MODELINFOID = m.MODELINFOID
 CROSS JOIN (SELECT 32 as LINKTYPEID UNION SELECT 34 UNION SELECT 36) lt
-WHERE NOT EXISTS (
-  SELECT 1 FROM [{MODEL_DB}].dbo.TBLLINKNODEINFOLINKTYPEMAP x
-  WHERE x.LINKNODEINFOID = lnm.LINKNODEINFOID AND x.LINKTYPEID = lt.LINKTYPEID
+WHERE m.LUTRONMODELNUMBERBASE LIKE 'RR%'
+AND m.LUTRONMODELNUMBERBASE NOT LIKE 'RR-MAIN%'
+AND m.LUTRONMODELNUMBERBASE NOT LIKE 'RR-AUX%'
+AND m.LUTRONMODELNUMBERBASE NOT LIKE 'RRK-%'
+AND m.LUTRONMODELNUMBERBASE NOT LIKE 'RRQ-%'
+AND NOT EXISTS (
+  SELECT 1 FROM [C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\SQLMODELINFO.MDF].dbo.TBLLINKNODEINFOLINKTYPEMAP existing
+  WHERE existing.LINKNODEINFOID = lnm.LINKNODEINFOID AND existing.LINKTYPEID = lt.LINKTYPEID
 );
 ```
 
-### Gate 2a: ProductMasterList — safe bulk add (SQLREFERENCEINFO)
+Expected: ~251 rows on fresh MDF.
 
-Add models to the HW ProductMasterList (cat 18) that exist in at least one OTHER
-ProductMasterList but not in HW. Only adds models whose `TOOLBOXNAMESTRINGID` is
-already used by an existing cat 18 model — this guarantees the string exists in
-visual 9 (the HW resource context). Without this filter, models like
-`MW-FPSIR-WH-CPN3100` (string 18453, visual 10 only) crash
-`DevicePickerViewModel.MatchFilter` with `InvalidStringIdException`.
+## Gate 2: ProductMasterList (SQLREFERENCEINFO)
+
+Adds all RA3 models to the HW ProductMasterList (CategoryID=18). Uses a simple approach: add every RR% model (excluding processors/repeaters) that isn't already in the list.
 
 ```sql
-INSERT INTO [{REF_DB}].dbo.TBLPRODINFOMDLINFOLISTMDLINFOID
+INSERT INTO [C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\SQLREFERENCEINFO.MDF].dbo.TBLPRODINFOMDLINFOLISTMDLINFOID
   (PRODUCTINFOMODELINFOLISTCATID, MODELINFOID, SORTORDER, ISOBSOLETE, OVERRIDEFILTERINFOID)
-SELECT 18, src.MODELINFOID,
-  ROW_NUMBER() OVER (ORDER BY src.MODELINFOID) +
-  (SELECT ISNULL(MAX(SORTORDER), 0) FROM [{REF_DB}].dbo.TBLPRODINFOMDLINFOLISTMDLINFOID WHERE PRODUCTINFOMODELINFOLISTCATID = 18),
+SELECT 18, m.MODELINFOID,
+  ROW_NUMBER() OVER (ORDER BY m.MODELINFOID) +
+  (SELECT ISNULL(MAX(SORTORDER), 0) FROM [C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\SQLREFERENCEINFO.MDF].dbo.TBLPRODINFOMDLINFOLISTMDLINFOID WHERE PRODUCTINFOMODELINFOLISTCATID = 18),
   0, NULL
-FROM (
-  SELECT DISTINCT p.MODELINFOID
-  FROM [{REF_DB}].dbo.TBLPRODINFOMDLINFOLISTMDLINFOID p
-  JOIN [{MODEL_DB}].dbo.TBLMODELINFO m ON m.MODELINFOID = p.MODELINFOID
-  WHERE p.PRODUCTINFOMODELINFOLISTCATID <> 18
-  AND m.TOOLBOXNAMESTRINGID IN (
-    SELECT DISTINCT m2.TOOLBOXNAMESTRINGID
-    FROM [{MODEL_DB}].dbo.TBLMODELINFO m2
-    WHERE m2.MODELINFOID IN (
-      SELECT MODELINFOID FROM [{REF_DB}].dbo.TBLPRODINFOMDLINFOLISTMDLINFOID WHERE PRODUCTINFOMODELINFOLISTCATID = 18
-    )
-  )
-) src
-WHERE src.MODELINFOID NOT IN (
-  SELECT p2.MODELINFOID FROM [{REF_DB}].dbo.TBLPRODINFOMDLINFOLISTMDLINFOID p2
-  WHERE p2.PRODUCTINFOMODELINFOLISTCATID = 18
+FROM [C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\SQLMODELINFO.MDF].dbo.TBLMODELINFO m
+WHERE m.LUTRONMODELNUMBERBASE LIKE 'RR%'
+AND m.LUTRONMODELNUMBERBASE NOT LIKE 'RR-MAIN%'
+AND m.LUTRONMODELNUMBERBASE NOT LIKE 'RR-AUX%'
+AND m.LUTRONMODELNUMBERBASE NOT LIKE 'RRK-%'
+AND m.LUTRONMODELNUMBERBASE NOT LIKE 'RRQ-%'
+AND m.MODELINFOID NOT IN (
+  SELECT p.MODELINFOID FROM [C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\SQLREFERENCEINFO.MDF].dbo.TBLPRODINFOMDLINFOLISTMDLINFOID p
+  WHERE p.PRODUCTINFOMODELINFOLISTCATID = 18
 );
 ```
 
-### Gate 2b: ProductMasterList — force-add RA3 CCA devices (SQLREFERENCEINFO)
+Expected: ~121 rows on fresh MDF.
 
-Gate 2a misses RA3 models whose `TOOLBOXNAMESTRINGID` values aren't used by any
-existing cat 18 model (e.g., RRD-3LD string 33917, RRD-6D string 11820). These
-are safe to add because they ARE in other ProductMasterList categories (7, 8, 19)
-and their strings exist in those contexts. Designer resolves them without crash.
+## Gate 3a: Family-Level ToolboxPlatformTypes (SQLMODELINFO)
 
-This explicit list covers the core RA3 CCA dimmers, switches, and fan controls
-that are most commonly needed in cross-platform HW projects.
+Adds bits 0x20 (HomeworksQS) and 0x1000 (myRoomLegacy) = 4128 to RR% device families. Prevents "Your account is not able to open this project" errors.
 
 ```sql
-INSERT INTO [{REF_DB}].dbo.TBLPRODINFOMDLINFOLISTMDLINFOID
-  (PRODUCTINFOMODELINFOLISTCATID, MODELINFOID, SORTORDER, ISOBSOLETE, OVERRIDEFILTERINFOID)
-SELECT 18, src.MODELINFOID,
-  ROW_NUMBER() OVER (ORDER BY src.MODELINFOID) +
-  (SELECT ISNULL(MAX(SORTORDER), 0) FROM [{REF_DB}].dbo.TBLPRODINFOMDLINFOLISTMDLINFOID WHERE PRODUCTINFOMODELINFOLISTCATID = 18),
-  0, NULL
-FROM (VALUES
-  (460),   -- RRD-6D
-  (461),   -- RRD-3LD
-  (464),   -- RRD-6ND
-  (465),   -- RRD-6NA
-  (466),   -- RRD-10D
-  (467),   -- RRD-10ND
-  (468),   -- RRD-8ANS
-  (469),   -- RRD-2ANF
-  (740),   -- RRD-8S-DV
-  (1166),  -- RR-3PD-1
-  (1229),  -- RRD-F6AN-DV
-  (1255),  -- RRD-6NE
-  (3467),  -- RRD-6CL
-  (4864)   -- RRD-PRO
-) AS src(MODELINFOID)
-WHERE src.MODELINFOID NOT IN (
-  SELECT MODELINFOID FROM [{REF_DB}].dbo.TBLPRODINFOMDLINFOLISTMDLINFOID
-  WHERE PRODUCTINFOMODELINFOLISTCATID = 18
-);
+UPDATE f SET TOOLBOXPLATFORMTYPES = f.TOOLBOXPLATFORMTYPES | 4128
+FROM [C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\SQLMODELINFO.MDF].dbo.TBLFAMILYCATEGORYINFO f
+JOIN [C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\SQLMODELINFO.MDF].dbo.TBLFAMILYCATINFOMODELINFOMAP fm ON fm.FAMILYCATEGORYINFOID = f.FAMILYCATEGORYINFOID
+JOIN [C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\SQLMODELINFO.MDF].dbo.TBLMODELINFO m ON m.MODELINFOID = fm.MODELINFOID
+WHERE m.LUTRONMODELNUMBERBASE LIKE 'RR%'
+AND f.TOOLBOXPLATFORMTYPES & 4128 <> 4128;
 ```
 
-### Gate 3a: Family-Level ToolboxPlatformTypes (SQLMODELINFO)
+Expected: ~34 rows on fresh MDF.
 
-OR in HW bits (4128 = HomeworksQS + myRoomLegacy) on ALL families.
+## Gate 3b: Model-Level ToolboxPlatformTypes Override (SQLMODELINFO)
+
+**THIS IS THE KEY GATE** that was previously missing. `TBLMODELINFOTOOLBOXPLATFORMTYPEMAP` contains per-model overrides that take precedence over family-level values. `ProductInfoHelper.GetLocationBasedToolboxPlatformTypesForModel()` checks this table FIRST, then falls back to family. 10 RR% models (RR-T*RL, RRT-G*) have override value 96 (RadioRA + HomeworksQS but NO myRoomLegacy) which blocks them even when the family-level value is correct.
 
 ```sql
-UPDATE [{MODEL_DB}].dbo.TBLFAMILYCATEGORYINFO
-SET TOOLBOXPLATFORMTYPES = TOOLBOXPLATFORMTYPES | 4128
-WHERE TOOLBOXPLATFORMTYPES & 4128 <> 4128;
+UPDATE t SET TOOLBOXPLATFORMTYPEID = t.TOOLBOXPLATFORMTYPEID | 4128
+FROM [C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\SQLMODELINFO.MDF].dbo.TBLMODELINFOTOOLBOXPLATFORMTYPEMAP t
+JOIN [C:\PROGRAMDATA\LUTRON\LUTRONELECTRONICS.LUTRONDESIGNERGAMMA_HB4QHWKZQ4PCY\ALEX\LUTRON DESIGNER 26.0.2.100\SQLMODELINFO.MDF].dbo.TBLMODELINFO m ON t.MODELINFOID = m.MODELINFOID
+WHERE m.LUTRONMODELNUMBERBASE LIKE 'RR%'
+AND t.TOOLBOXPLATFORMTYPEID & 4128 <> 4128;
 ```
 
-### Gate 3b: Model-Level ToolboxPlatformTypes Override (SQLMODELINFO)
-
-OR in HW bits on ALL model-level overrides. This table is checked FIRST by
-`ProductInfoHelper.GetLocationBasedToolboxPlatformTypesForModel()`, before
-falling back to family. Without this, models with overrides are invisible
-even when the family value is correct.
-
-```sql
-UPDATE [{MODEL_DB}].dbo.TBLMODELINFOTOOLBOXPLATFORMTYPEMAP
-SET TOOLBOXPLATFORMTYPEID = TOOLBOXPLATFORMTYPEID | 4128
-WHERE TOOLBOXPLATFORMTYPEID & 4128 <> 4128;
-```
+Expected: ~10 rows on fresh MDF.
 
 ## After Applying
 
-1. Click **"Leave remote services disabled"**
-2. All cross-platform devices should now appear in the HW toolbox
-3. Report row counts for each gate
+1. Click **"Leave remote services disabled"** in the project open dialog
+2. RA3 devices should now appear in the HW toolbox under their respective categories
+3. Report row counts for each gate to verify
 
 ## Notes
 
-- All queries are **additive** (`|`, `INSERT ... NOT IN`) — never delete or overwrite
-- All queries are **idempotent** — safe to run multiple times
+- **Both MDFs reset on every Designer restart** — all 4 gates must be re-applied each time
+- Apply patches AFTER Designer starts, BEFORE opening the project
 - `4128 = 0x1020 = HomeworksQS (0x20) + myRoomLegacy (0x1000)`
-- Gate 2a filters by known-good `TOOLBOXNAMESTRINGID` values to avoid `InvalidStringIdException` crash in visual 9
-- Gate 2b force-adds RA3 CCA models that Gate 2a misses (their string IDs aren't in cat 18 but are safe — they exist in other category contexts)
-- Gate 4 (DeviceClass comparison at pairing) has no DB fix — pair using the RA3 model, then swap via serial injection if needed
+- myRoomLegacy has `[AvailableForDevicePicker]` attribute; HomeworksQS does not but is needed for project-open validation
+- Gate 4 (DeviceClass comparison at pairing time) has no DB fix — use RA3 model numbers to pair, then swap to HW model via serial injection if needed
+- HW ProductMasterList: ProductInfoID=4, ListID=5, CategoryID=18 ("Null Parent")
 
-### Model Prefix Reference
+### Sunnata Model Prefixes
 
-| RA3 | HW Equivalent | Type |
-|-----|---------------|------|
-| RRD | HQR/HQRD | Dimmers/switches (CCA) |
-| RRT | HQRT | seeTouch keypads (CCA) |
-| RRST | HRST | Sunnata (Thread) |
-| RRDE | — | Extension dimmers (CCA) |
-| RRL | — | Newer models |
+| Prefix | Product | Stock HW List |
+|--------|---------|:---:|
+| **HRST** | HomeWorks Sunnata | Yes |
+| **ARST** | Athena/QS Sunnata | No (Quantum/StandAloneQS/MyRoom only) |
+| **RRST** | RadioRA 3 Sunnata | No (added by Gate 2) |
+
+RRST and ARST share families with identical ToolboxPlatformTypes. RRST uses LinkType 40 (PegasusLink/Thread), not LinkType 9 (CCA).
