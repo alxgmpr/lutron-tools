@@ -312,31 +312,27 @@ struct.pack_into('<I', data, flags_offset, flags)
 
 ## Step 5: Deploy and Test
 
-```bash
-# Kill Designer and ConnectSyncService (holds DLLs open)
-sshpass -p alex ssh ... 'taskkill /F /IM QuantumResi.exe & taskkill /F /IM ConnectSyncService.exe'
+Use the `designer-deploy` skill for the full build/deploy/verify cycle. Key points:
 
-# SCP patched DLL to VM
-sshpass -p alex scp ... /tmp/designer-rox/PATCHED.dll alex@192.168.64.4:Desktop/
-
-# Copy into MSIX directory
-sshpass -p alex ssh ... 'powershell -ExecutionPolicy Bypass -Command "Copy-Item C:\Users\alex\Desktop\PATCHED.dll \"C:\Program Files\WindowsApps\LutronElectronics.LutronDesigner26.2.0.113_26.2.0.113_x86__hb4qhwkzq4pcy\QuantumResi\ORIGINAL_NAME.dll\" -Force"'
-
-# Launch Designer
-sshpass -p alex ssh ... 'powershell -Command "Start-Process shell:AppsFolder\LutronElectronics.LutronDesigner26.2.0.113_hb4qhwkzq4pcy!App"'
-```
-
-Designer takes ~15 seconds to fully load. ConnectSyncService may also lock DLLs — kill it before copying.
+1. All patches go through `tools/dll-patcher/DllPatcher/Program.cs` (dnlib-based, not byte-level)
+2. Build: `dotnet run --project tools/dll-patcher/DllPatcher/DllPatcher.csproj -- /tmp/designer-rox /tmp/designer-patched`
+3. Kill Designer + ConnectSyncService BEFORE uploading
+4. Deploy via `deploy.ps1`, verify with `hash-check.ps1`
+5. ALL DLLs must show OK — never accept partial deploys
+6. Do NOT launch Designer automatically — user does it manually
 
 ## Patched DLLs Reference
 
-Currently patched DLLs (all at `/tmp/designer-rox/`):
+All patches are in `tools/dll-patcher/DllPatcher/Program.cs`. Originals cached at `/tmp/designer-rox/`, patched output at `/tmp/designer-patched/`.
 
-| DLL | Patch | Purpose |
-|-----|-------|---------|
-| `FeatureFlagServiceProvider-patched.dll` | 2 patches (Setup 0x43d, ResetOverrideService 0x515) | Override service always initializes |
-| `QuantumResi-v8.dll` | 3 patches (menu vis, nav bypass, filter bypass) | Feature Flag Override UI visible and populated |
-| `DomainObjects-patched.dll` | SupportsActiveInactiveIntensity code cave | Sunnata keypads report backlight support |
+| DLL | Section | Patches | Purpose |
+|-----|---------|---------|---------|
+| FeatureFlagServiceProvider.dll | 1 | Rox try-catch, EnableFeatureFlagOverride gate removal | Override service initializes without CloudBees |
+| QuantumResi.dll | 2+6 | Menu vis, nav bypass, filter bypass, diagnostics | Feature Flag Override UI + toolbox unlock + logging |
+| DomainObjects.dll | 3 | SupportsActiveInactiveIntensity + IsHybridKeypad | Sunnata keypads report backlight support |
+| Infrastructure.dll | 3b | IVT strip only | Cross-assembly internal access |
+| ModelViews.dll | 3b | IVT strip + SupportsAII diagnostic | Cross-assembly access + logging |
+| InfoObjects.dll | 4 | IVT strip only | Cross-assembly internal access |
 
 ## Lessons Learned
 
