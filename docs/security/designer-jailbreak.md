@@ -4,7 +4,9 @@ Bypasses Lutron Designer's online authentication and feature flag requirements f
 
 ## Quick Start
 
-Apply 3 IL patches to `Lutron.Gulliver.QuantumResi.dll` and 2 patches to `Lutron.Gulliver.FeatureFlagServiceProvider.dll`. Rollout connectivity is NOT required. Flag overrides persist to `featureOverrides.json`.
+Apply 3 IL patches to `Lutron.Gulliver.QuantumResi.dll`, 2 patches to `Lutron.Gulliver.FeatureFlagServiceProvider.dll`, and 3 patches to `Lutron.Gulliver.Infrastructure.dll`. Rollout connectivity is NOT required. Flag overrides persist to `featureOverrides.json`.
+
+The three Infrastructure.dll patches replace the hosts-file block + `ServicesConfig.json` URL-list hack described in [`designer-auth-bypass.md`](designer-auth-bypass.md) — Designer stays **fully online** (engraving preview/submission via PStore Apim, firmware update checks, LEAP cloud proxy all work), the myLutron server can't revoke the session, and every product channel (RA3/HWQS/Vive/Ketra/DTDT) is unlocked regardless of what the real account authorizes.
 
 ### Prerequisites
 
@@ -86,6 +88,56 @@ After:  26 00        pop; nop
 ```
 
 Also clear the `CLR_STRONGNAMESIGNED` flag in the CLR header (offset 0x218: clear bit 3) to prevent assembly load failure.
+
+### Infrastructure.dll Patches
+
+Three patches on `Lutron.Gulliver.Infrastructure.dll` keep Designer online + unlocked without needing a forged credential file:
+
+#### Patch I1: Wrap `AttemptAuthentication` so the real OAuth flow runs and de-auth is impossible
+
+**Class:** `Lutron.Gulliver.Infrastructure.myLutronService.UserManager`
+**Method:** `AttemptAuthentication(bool attemptTokenAuthentication)`
+**Purpose:** This is the only method that hits `myLutronServiceManager.Instance` — it calls `RefreshToken(true)` for token refresh (startup) or `AuthenticateCode(user)` for the login-button OAuth path. Its return value feeds `AuthenticatefromSSO`, which flips `User.IsAuthenticated` based on the result.
+
+A pure `return 1` stub would block the real OAuth call — breaking Bearer-authed endpoints (PStoreService/engraving Apim/etc.) that read `user.SecurityToken` at request time. Instead we wrap the original body in try/catch and always coerce the return to `AuthenticationSuccess`:
+
+```
+try {
+    if (!attemptTokenAuthentication) myLutronServiceManager.Instance.AuthenticateCode(user);
+    else                              myLutronServiceManager.Instance.RefreshToken(true);
+} catch {}
+return AuthenticationResult.AuthenticationSuccess;  // 1
+```
+
+The real call still executes — its side-effect (`UserManager.Instance.SetCurrentUser(...)` with a live `SecurityToken`) populates the bin on successful login. Any failure (offline, expired, revoked, 401, 4xx, anything) is swallowed and reported as success, so de-auth is unreachable.
+
+Implementation lives in `PatchAttemptAuthenticationTryCatch` (`tools/dll-patcher/DllPatcher/Program.cs`), which extracts the `get_Instance` / `RefreshToken` / `AuthenticateCode` method refs + the `user` field ref from the original IL before rewriting the body.
+
+**Intentionally NOT patched:** `User.ResetProperties(User)`. Earlier iterations stubbed it to no-op as belt-and-suspenders against de-auth, but it's called by `UserManager.AuthenticateNewUser` to clear `username`/`Code`/`CodeVerifier`/`IsAuthenticated`/`channels` before the login-button OAuth flow. Stubbing it leaves the post-logout `@Guest@` dummy username in place, which causes `AuthenticatefromSSO` to short-circuit via `IsCurrentUserADummyUser()` and never open the browser. The I1 try/catch alone is sufficient.
+
+#### Patch I2: `User.get_ChannelTypes` → `ChannelTypes.All` (0x1FFFFFFF)
+
+**Class:** `Lutron.Gulliver.Infrastructure.myLutronService.User`
+**Method:** `get_ChannelTypes()`
+**Purpose:** The server-returned channel bitmask is ignored. Every `[Flags]` bit is set, so the user effectively has every product channel (RA3, HWQS, Vive, Ketra, DTDT beta flags, currency codes, etc.) regardless of what the real myLutron account is authorized for. Downstream gates like project-open compat, toolbox model visibility, and link-type filtering all see the max bitfield.
+
+```
+New body: ldc.i4 0x1FFFFFFF; ret
+```
+
+The setter remains untouched — `SetUserChannels` still runs as normal (so `user.Channels` the string list is still populated for display); readers just always see `All`.
+
+#### Patch I3: `User.get_AllChannelTypes` → `ChannelTypes.All` (0x1FFFFFFF)
+
+**Class:** `Lutron.Gulliver.Infrastructure.myLutronService.User`
+**Method:** `get_AllChannelTypes()`
+**Purpose:** Mirror of I2 for the "all channels ever seen" getter — some call sites read this instead of `ChannelTypes`.
+
+```
+New body: ldc.i4 0x1FFFFFFF; ret
+```
+
+All three patches are applied by `tools/dll-patcher/` (search for the `--- Infrastructure.dll ---` block in `Program.cs`).
 
 #### Previous patches 4-11 (REMOVED)
 

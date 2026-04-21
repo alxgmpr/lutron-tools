@@ -1,8 +1,14 @@
 # Designer Auth Bypass
 
-Fully offline authentication bypass for Lutron Designer. No Lutron account required. Works by forging the encrypted credential file and forcing the app into offline mode, where it auto-authenticates any non-guest user.
+Authentication bypass for Lutron Designer that keeps the session **fully online** so Bearer-authed cloud APIs (engraving preview/submission via PStore Apim, firmware update checks, LEAP cloud proxy) keep working.
 
-Combines with the [DLL jailbreak](designer-jailbreak.md) (IL patches for feature flags and the 26.2 channel-compat gate — see also [designer-26.2-channel-fix](../infrastructure/designer-26.2-channel-fix.md)) for full offline operation. This bypass handles authentication only.
+Two supported deployments:
+
+**Recommended (online, requires real myLutron account):** Real OAuth login writes a real `SecurityToken` to `LutronData.bin`; three `Infrastructure.dll` patches ensure the session can't be revoked and expose all channels regardless of what the server returned for the account.
+
+**Legacy (fully offline, no account):** Forged `LutronData.bin` + hosts-file block + `InternetConnectivityURLList` rewrite. Severs all internet — Bearer-authed features (engraving previews, etc.) break. Only use if you can't run the DLL patcher or don't have a myLutron account.
+
+Combines with the [DLL jailbreak](designer-jailbreak.md) (IL patches for feature flags and the 26.2 channel-compat gate — see also [designer-26.2-channel-fix](../infrastructure/designer-26.2-channel-fix.md)) for full operation.
 
 ## How It Works
 
@@ -99,7 +105,17 @@ dotnet run -- --dump /path/to/LutronData.bin
 dotnet run -- --encrypt payload.json --output LutronData.bin
 ```
 
-### Deploy (3 files to modify)
+### Deploy — recommended (online-compatible, real myLutron account)
+
+**1. Apply Infrastructure.dll patches** — run `tools/dll-patcher/`, which applies them alongside the feature-flag/channel-compat patches. See [`designer-jailbreak.md`](designer-jailbreak.md) *Infrastructure.dll Patches* section for patch details.
+
+**2. Log in once** — launch Designer, click Login, complete the OAuth browser flow with a real myLutron account. This writes a real `SecurityToken`/`RefreshToken` to `%APPDATA%\Lutron\Common\LutronData.bin`. Whatever channels the account has are irrelevant — the `get_ChannelTypes` patch forces `ChannelTypes.All` regardless.
+
+That's it. No forged credential file. No hosts-file edits. No `ServicesConfig.json` edits. Designer runs fully online with real Bearer tokens, unlocks all product channels (RA3/HWQS/Vive/etc.), and can't be de-authed by the myLutron server.
+
+### Deploy — legacy (forced offline, no account, breaks engraving/firmware/cloud)
+
+If you don't have a myLutron account, use the fully-offline path with a forged credential file. Bearer-authed features (engraving previews, firmware update checks) won't work.
 
 **1. Forged credential file:**
 ```
