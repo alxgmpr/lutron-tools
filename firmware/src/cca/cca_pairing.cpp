@@ -1398,8 +1398,6 @@ static void exec_ota_begin(uint32_t target_serial, uint16_t subnet, uint8_t dura
 
     printf("[cca] CMD ota_begin serial=%08X subnet=%04X dur=%us\r\n", (unsigned)target_serial, subnet, duration_sec);
 
-    cc1101_stop_rx();
-
     uint8_t packet[22];
     uint32_t start = HAL_GetTick();
     uint32_t count = 0;
@@ -1408,14 +1406,18 @@ static void exec_ota_begin(uint32_t target_serial, uint16_t subnet, uint8_t dura
     while ((HAL_GetTick() - start) < (uint32_t)duration_sec * 1000) {
         cca_ota_build_begin_transfer(packet, subnet, target_serial);
         packet[1] = seq;
+        /* Stop/start RX around each TX so the device's 0x0B ACK at 25 ms
+         * cadence has a window to be received between BeginTransfer packets.
+         * Without this, 5s of TX completely starves the RX path. */
+        cc1101_stop_rx();
         transmit_one(packet, 22);
+        cc1101_start_rx();
         count++;
         seq = (seq + 6) & 0xFF;
         if (seq >= 0x48) seq = 0x01;
         vTaskDelay(pdMS_TO_TICKS(75));
     }
 
-    cc1101_start_rx();
     printf("[cca] CMD ota_begin complete (%lu pkts) — watch for 0x0B ACK fmt=0xC1\r\n", (unsigned long)count);
 }
 

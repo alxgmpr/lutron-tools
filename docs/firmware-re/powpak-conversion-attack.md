@@ -253,6 +253,61 @@ After seeing `0xEC`, power-cycle the RMJ. Try to pair to an RA3 processor. If it
 - **Subnet rejection at every value.** If the bootloader requires a SPECIFIC subnet (e.g., one matching its prior commissioning), we may need to capture the RMJS during pairing to learn its expected subnet. Easy enough to set up.
 - **Signature/CRC at commit.** If the commit step verifies a signature over the body (not just CRC), we may need to RE the verification logic. The Phoenix EFR32 coproc IPC `0x2A` handler is the place to start (BN entry points at `0x08018c18` / `0x08018c98`; load the larger phoenix binary `_8003000-803FF08.bin`).
 
+## 2026-04-29: Brick incident on RMJ 0x00BC2107 (line-voltage RMJ-16R-DV-B)
+
+**Status: device is non-responsive.** No power-up LED flash, no button-press LED flash, no relay click. Pre-test it had normal LED behavior (intermittent flash on power-up + button press). Recovery via RF unsuccessful through 25+ attempts. Recovery requires BDM — see [powpak-bdm-recovery.md](powpak-bdm-recovery.md).
+
+### TX sequence in chronological order
+
+All transmits at 433.602844 MHz, runtime CCA framing, against unpaired factory-fresh RMJ (serial `0x00BC2107`, DeviceClass `0x16/0x03/0x02/0x01`):
+
+1. **`cca ota-begin ffff 00bc2107 1`** — 1-second BeginTransfer burst (~13 packets). `0x92` unicast, sub-op `06 00`, payload `02 20 00 00 00 1F`, subnet `0xFFFF`.
+   - This is the most likely culprit. The bootloader's BeginTransfer handler at section-A `0x1a23` likely (a) accepted the packet despite no prior pairing, (b) executed a flash-erase of the application section in preparation for the new image, (c) parked the chip in OTA-receive mode waiting for chunks.
+   - We never sent valid TransferData chunks. The application section was erased but never refilled. The bootloader is alive but has nothing to boot.
+2. Subsequent broadcasts (`cca broadcast`, `cca level`, `cca raw` with various class/component bytes) — these likely had no effect because the chip was already in OTA-wait mode and only listens for `06 nn` sub-opcodes, not runtime control packets.
+3. **`cca ota-begin ffff 00bc2107 5`** — 58 BeginTransfer packets at subnet `0xFFFF`. If the chip was already in OTA mode from step 1, this resent the same Begin which may have re-erased and reset the OTA window.
+4. **Subnet sweep** (`0x0000`, `0xFFFE`, `0xEFFD`, `0x82D7`, `0x1234`, `0xABCD`) — 105 BeginTransfer packets across 6 subnets.
+5. **Recovery attempts** (`cca raw` with sub-ops `0x04`, `0x05`, `0x06`-`0x0F`, `0xFF` against unicast 0x91 and broadcast 0x81) — none recovered.
+6. **`cca ota-begin` then sub-op `04` spam** — sequence intended to BeginTransfer + immediately abort. No effect.
+
+### Hypothesis on the brick mechanism
+
+**Most likely**: BeginTransfer (sub-op `0x00`) at any subnet was sufficient to make the unpaired bootloader execute a flash-erase of the application region. The bootloader has no `subnet` filter at the BeginTransfer-RX stage in factory state — it simply matches its serial in bytes 9-12 (`0x00BC2107`) and accepts. Once erased, it cannot revert to the old app because the old app no longer exists in flash. It can only be reflashed.
+
+This is consistent with the observed symptoms:
+- Power-up LED flash gone: the application owns the LED toggle in the boot sequence; if the app is erased, the LED never gets driven.
+- Button-press LED flash gone: same code path (application).
+- Relay never clicks: relay is application-controlled.
+- No on-air response to any sub-op: the bootloader's RX dispatcher requires the chip to first execute `cc1101_init` (or equivalent), which runs in the application's startup code. With no application, the radio never initializes.
+
+### Implications for RMJS / LMJ targets
+
+**DO NOT send `cca ota-begin` against the RMJS unit (the unit we don't want to brick) until subnet/handshake is fully validated against a sacrificial RMJ.** The same flash-erase will fire on first BeginTransfer regardless of what we plan to do next.
+
+Lessons:
+1. BeginTransfer is destructive, not exploratory. The first packet erases the application.
+2. Need a way to test reachability *without* triggering the OTA flash-erase. Probable candidates: `06 03` Device-poll (no payload, observed in captured OTA pre-flight, less likely to trigger erase) or pairing-stage packets (B0/B8/B9). Verify what response, if any, an unpaired device gives to those before attempting BeginTransfer.
+3. The next live-fire test should target a DIFFERENT sacrificial RMJ — not the bricked one — and use Device-poll (`06 03`) first to confirm RX is alive, *then* BeginTransfer only after confirming the device responds.
+
+### Reachability matrix that yielded no response (pre-brick, first RMJ)
+
+For the record — none of these elicited an `0x0B` ACK from the unpaired RMJ before it was bricked:
+
+| Method | bytes 3-4 (subnet) | bytes 9-12 | byte 13 | Result |
+|---|---|---|---|---|
+| `cca level` (unicast) | zone bytes | serial BE | FE | silent |
+| `cca broadcast` | zone | FF FF FF FF | FF | silent |
+| Raw broadcast w/ DevClass | 00 00 | 16 03 02 01 | FF | silent |
+| Raw broadcast w/ DevClass + subnet=FFFF | FF FF | 16 03 02 01 | FF | silent |
+| Raw 0x83 + DevClass + RELAY component (06 38) | 00 00 | 16 03 02 01 | FF | silent |
+| Raw 0x83 + DevClass + format 09 CTRL | 00 00 | 16 03 02 01 | FF | silent |
+| Raw 0x83 + DevClass + pair_flag=7F | 00 00 | 16 03 02 01 | FF | silent |
+| Raw 0x83 + 5-byte broadcast (FF×5) | 00 00 | FF FF FF FF FF | (n/a) | silent |
+
+**No subnet, no addressing mode, and no command class produced an `0x0B` XOR-ACK from the unpaired device on any of those tests** — *before* the brick. This is a separate concern from the brick itself: it suggests an unpaired factory-fresh RMJ does not respond to runtime CCA commands of any kind we tried. Either the bootloader RX path is dormant until something specific wakes it, or the application's RX-side filtering rejects everything that doesn't match a paired-state subnet+zone.
+
+The successful capture we have (Caseta REP2 → DVRF-6L) was always against a *paired* device. We have no captured ESN→RMJ exchange to compare against. Acquiring such a capture (if an ESN system is available) is now the highest-value next step before any further OTA work.
+
 ## Open questions (in rough priority order)
 
 1. **Will the device subnet-filter our packets?** Empirical: try a few subnet values, watch for any ACK at all. Highest-priority unknown.
