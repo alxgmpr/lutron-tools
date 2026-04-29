@@ -107,7 +107,7 @@ dotnet run -- --encrypt payload.json --output LutronData.bin
 
 ### Deploy — recommended (online-compatible, real myLutron account)
 
-**1. Apply Infrastructure.dll patches** — run `tools/dll-patcher/`, which applies them alongside the feature-flag/channel-compat patches. See [`designer-jailbreak.md`](designer-jailbreak.md) *Infrastructure.dll Patches* section for patch details.
+**1. Apply Infrastructure.dll patches** — run `exploits/designer-jailbreak/dll-patcher/`, which applies them alongside the feature-flag/channel-compat patches. See [`designer-jailbreak.md`](designer-jailbreak.md) *Infrastructure.dll Patches* section for patch details.
 
 **2. Log in once** — launch Designer, click Login, complete the OAuth browser flow with a real myLutron account. This writes a real `SecurityToken`/`RefreshToken` to `%APPDATA%\Lutron\Common\LutronData.bin`. Whatever channels the account has are irrelevant — the `get_ChannelTypes` patch forces `ChannelTypes.All` regardless.
 
