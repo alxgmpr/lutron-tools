@@ -5,7 +5,7 @@
  *
  * Pipeline:
  *   1. Slice the IQ capture into 60-second windows.
- *   2. For each window, run `tools/rtlsdr-cca-decode.ts` to N81-decode every
+ *   2. For each window, run `tools/cca/rtlsdr-cca-decode.ts` to N81-decode every
  *      CCA packet (uses runtime CCA framing; the OTA traffic shares the
  *      runtime CCA channel and framing — see docs/firmware-re/cca-ota-live-capture.md).
  *   3. Filter to long packets (`0xB1`/`0xB2`/`0xB3`) carrying TransferData.
@@ -34,12 +34,12 @@
  *                  [--rate Hz] [--out <file.bin>]
  *
  *   # Example: validate the 2026-04-28 OTA capture against the v3.021 PFF.
- *   tools/ota-extract.ts \
+ *   tools/cca/ota-extract.ts \
  *     --capture data/captures/cca-ota-20260428-190439.rf.bin \
  *     --firmware data/firmware/dvrf6l-v3.021.pff \
  *     --start-sec 37 --duration-sec 1093
  *
- * The decoder leans on `tools/rtlsdr-cca-decode.ts` for FM-discriminate +
+ * The decoder leans on `tools/cca/rtlsdr-cca-decode.ts` for FM-discriminate +
  * N81-decode + CRC verify; this tool only handles the OTA-layer extraction.
  */
 
@@ -119,7 +119,7 @@ function decodeWindow(
   writeFileSync(sliceFile, raw);
   try {
     execSync(
-      `npx tsx tools/rtlsdr-cca-decode.ts --rate ${rate} ${sliceFile} > ${decodedFile} 2>&1`,
+      `npx tsx tools/cca/rtlsdr-cca-decode.ts --rate ${rate} ${sliceFile} > ${decodedFile} 2>&1`,
       { stdio: "ignore" },
     );
   } catch {

@@ -18,16 +18,16 @@
  *   demodulation → byte alignment via FA DE → CRC-checked packet extraction.
  *
  * Usage:
- *   npx tsx tools/rtlsdr-ota-decode.ts \
+ *   npx tsx tools/cca/rtlsdr-ota-decode.ts \
  *     --rate 2560000 --mix 36500 \
  *     --start-sec 35 --duration-sec 10 \
  *     data/captures/cca-ota-20260428-190439.rf.bin
  *
  *   # Process the entire file in chunks (slower):
- *   npx tsx tools/rtlsdr-ota-decode.ts --rate 2560000 --mix 36500 capture.bin
+ *   npx tsx tools/cca/rtlsdr-ota-decode.ts --rate 2560000 --mix 36500 capture.bin
  *
  *   # Show 0x41 (TransferData) too — by default they're collapsed to a count:
- *   npx tsx tools/rtlsdr-ota-decode.ts ... --show-transfer
+ *   npx tsx tools/cca/rtlsdr-ota-decode.ts ... --show-transfer
  */
 
 import { closeSync, openSync, readSync, statSync } from "fs";
@@ -36,14 +36,14 @@ import {
   extractPacketsFromBits,
   type OtaExtracted,
   SYNC_WORD,
-} from "../lib/cca-ota-codec";
+} from "../../lib/cca-ota-codec";
 import {
   complexFromUint8,
   demodulateFskFromSample,
   findPatternOffsets,
   instantaneousFrequency,
   mix,
-} from "../lib/cca-ota-demod";
+} from "../../lib/cca-ota-demod";
 
 const DATA_RATE_HZ = 62_500;
 const DEVIATION_HZ = 38_000;
