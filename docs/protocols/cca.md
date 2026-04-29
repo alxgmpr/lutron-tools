@@ -557,7 +557,7 @@ The CC1101 in variable-length mode **truncates 53-byte config packets to 24 byte
 rtl_sdr -f 433602844 -s 2000000 -g 40 capture.bin
 
 # Decode
-bun run tools/rtlsdr-cca-decode.ts --rate 2000000 capture.bin
+bun run tools/cca/rtlsdr-cca-decode.ts --rate 2000000 capture.bin
 ```
 
 ### 0x0B ACK Packets
@@ -666,7 +666,7 @@ During an OTA the `format` byte is the **device's state code** — see §9.5 for
 ### RTL-SDR Verification Notes
 
 - CC1101/ESP32 packet logs TRUNCATE packets in variable-length mode — always verify protocol with RTL-SDR captures of real hardware
-- Decode command: `bun run tools/rtlsdr-cca-decode.ts --rate 2000000 <file.bin>`
+- Decode command: `bun run tools/cca/rtlsdr-cca-decode.ts --rate 2000000 <file.bin>`
 - Capture command: `rtl_sdr -f 433602844 -s 2000000 -g 40 <output.bin>`
 - Use 2 MHz sample rate (32 samples/bit) for best results
 - CC1101 variable-length mode misses packets it's not configured for — it only captures packets matching its configured length/sync settings

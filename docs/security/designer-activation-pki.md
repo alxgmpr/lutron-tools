@@ -82,7 +82,7 @@ is for the local activation flow described here; the latter is for Lutron's
 |------|----------|-------------------|----------------------|-----------------|
 | 8081 | LEAP (JSON) | `radioRa3-products` tree | project SubSystem CA after activation | LEAP client |
 | 8083 | **LAP** (JSON, activation) | `radioRa3-products` tree | `residential_local_access.pfx` (shipped) | Designer `ProcessorLapClient` |
-| 8902 | IPL (binary) | `radioRa3-products` tree | project SubSystem CA | `tools/ipl-cmd.ts` once CA is in hand |
+| 8902 | IPL (binary) | `radioRa3-products` tree | project SubSystem CA | `tools/ipl/ipl-cmd.ts` once CA is in hand |
 
 The **server cert** trust anchors are the five product roots shipped in
 `QuantumResi/BinDirectory/CertificateStore/`:
@@ -368,7 +368,7 @@ openssl req -x509 -new -key my_ca_key.pem -sha384 -days 36500 -out my_ca_cert.pe
    — you now have IPL write access.
 
 This is straightforward to encode as `tools/ipl-activate.ts` alongside
-`tools/ipl-cmd.ts`. Cost: a few hundred lines of TypeScript using Node's `tls`
+`tools/ipl/ipl-cmd.ts`. Cost: a few hundred lines of TypeScript using Node's `tls`
 and `node-forge`.
 
 ## 6. Open Items / Next Live Tests
@@ -457,4 +457,4 @@ cloud features (remote access, myLutron app, etc.). Out of scope for 8902.
 | Cloud escalation (unrelated to IPL) | `LutronCloudApiIntegration.dll!SystemClusterAPIService.RequestCSRForCloudEscalation` → `/api/v2/provisioning/cluster/ownership-transfer` |
 
 See [ipl.md](../protocols/ipl.md) for what to do with IPL:8902 once you have a
-SubSystem CA — including `tools/ipl-cmd.ts`'s verified `GoToLevel` write path.
+SubSystem CA — including `tools/ipl/ipl-cmd.ts`'s verified `GoToLevel` write path.

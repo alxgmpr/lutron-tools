@@ -111,7 +111,7 @@ return AuthenticationResult.AuthenticationSuccess;  // 1
 
 The real call still executes — its side-effect (`UserManager.Instance.SetCurrentUser(...)` with a live `SecurityToken`) populates the bin on successful login. Any failure (offline, expired, revoked, 401, 4xx, anything) is swallowed and reported as success, so de-auth is unreachable.
 
-Implementation lives in `PatchAttemptAuthenticationTryCatch` (`tools/dll-patcher/DllPatcher/Program.cs`), which extracts the `get_Instance` / `RefreshToken` / `AuthenticateCode` method refs + the `user` field ref from the original IL before rewriting the body.
+Implementation lives in `PatchAttemptAuthenticationTryCatch` (`exploits/designer-jailbreak/dll-patcher/DllPatcher/Program.cs`), which extracts the `get_Instance` / `RefreshToken` / `AuthenticateCode` method refs + the `user` field ref from the original IL before rewriting the body.
 
 **Intentionally NOT patched:** `User.ResetProperties(User)`. Earlier iterations stubbed it to no-op as belt-and-suspenders against de-auth, but it's called by `UserManager.AuthenticateNewUser` to clear `username`/`Code`/`CodeVerifier`/`IsAuthenticated`/`channels` before the login-button OAuth flow. Stubbing it leaves the post-logout `@Guest@` dummy username in place, which causes `AuthenticatefromSSO` to short-circuit via `IsCurrentUserADummyUser()` and never open the browser. The I1 try/catch alone is sufficient.
 
@@ -137,7 +137,7 @@ The setter remains untouched — `SetUserChannels` still runs as normal (so `use
 New body: ldc.i4 0x1FFFFFFF; ret
 ```
 
-All three patches are applied by `tools/dll-patcher/` (search for the `--- Infrastructure.dll ---` block in `Program.cs`).
+All three patches are applied by `exploits/designer-jailbreak/dll-patcher/` (search for the `--- Infrastructure.dll ---` block in `Program.cs`).
 
 #### Previous patches 4-11 (REMOVED)
 
