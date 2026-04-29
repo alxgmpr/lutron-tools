@@ -49,7 +49,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y clang cppcheck
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: clang cppcheck
+          version: v1
       - run: make -C firmware test
       - run: make -C firmware format-check
       - run: make -C firmware lint
@@ -58,7 +61,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y clang-format
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: clang-format
+          version: v1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -97,7 +103,10 @@ jobs:
         run: echo "$ARM_DIR/bin" >> "$GITHUB_PATH"
 
       - name: Install ninja + ccache
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build ccache
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: ninja-build ccache
+          version: v1
 
       - name: Cache FetchContent deps (FreeRTOS + STM32CubeH7)
         uses: actions/cache@v4
