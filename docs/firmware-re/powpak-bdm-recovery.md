@@ -87,10 +87,10 @@ CLI alternative (if dmg unavailable on Apple Silicon):
 ### Original RMJ firmware (the image to flash back)
 
 The factory RMJ image is on disk:
-- `data/designer-firmware/QuantumResi/BinDirectory/Firmware/QuantumResi/qs_firmware_and_tools/powpak%20modules/PowPakRelay434_1-49.LDF` (99,928 bytes including 0x80-byte LDF header)
-- `data/firmware-re/powpak/PowPakRelay434_1-49.bin` (99,800 bytes, plain HCS08 image — already extracted)
+- `data/designer-firmware/QuantumResi/BinDirectory/Firmware/QuantumResi/qs_firmware_and_tools/powpak%20modules/PowPakRelay434_1-49.LDF` (100,056 bytes — 128-byte LDF header + 99,928-byte body)
+- `data/firmware-re/powpak/PowPakRelay434_1-49.bin` (99,928 bytes, plain HCS08 image — LDF header already stripped, sha256 `61fdafb984ff79e37ec4ac3af301df518f83cd420727607aca69a31e9187d853`)
 
-**Use the `.bin` (without LDF header).** This is the raw image that should sit at flash offset `0x0000`.
+**Use the `.bin` (without LDF header).** This is the raw image that should sit at flash offset `0x0000`. Drive the flash via [tools/firmware/bdm-recovery.sh](../../tools/firmware/bdm-recovery.sh).
 
 DeviceClass at body offset `0x8AD` is `0x16 0x03 0x02 0x01` (RMJ-16R-DV-B 434 MHz NA — matches the bricked unit's label).
 
