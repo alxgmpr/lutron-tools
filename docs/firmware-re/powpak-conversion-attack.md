@@ -1,6 +1,6 @@
 # PowPak RMJ/RMJS → LMJ conversion attack — plan & state
 
-**Status (2026-04-29):** Protocol RE complete, bootloader RE shows no active DeviceClass cross-check, tooling ready for synth-TX validation. Hardware test pending.
+**Status (2026-04-29):** Protocol RE complete, bootloader RE shows no active DeviceClass cross-check, **synth-OTA-TX builders + Phase 2a `cca ota-begin` shell command landed** (TDD against captured-on-air ground truth, all 154 firmware tests pass, ARM build clean). Awaiting hardware test for Phase 2a (subnet recon).
 
 **Goal:** flash a non-smart PowPak (RMJ standalone for ESN, or RMJS for Vive) with smart firmware (LMJ for RA2/RA3/HWQS), entirely RF-side from a Nucleo+CC1101, bypassing every Lutron host system. End state: a device that physically exists as an RMJ/RMJS now boots as an LMJ and pairs to an RA3 processor.
 
@@ -199,17 +199,43 @@ Constructing a valid TX requires picking values for fields that are normally bri
 
 ### Step-by-step protocol
 
-1. **Self-receive validation (no target device)** — synth-TX an LMJ image to ourselves via the SDR loopback. `tools/ota-extract.ts --capture <our-iq> --firmware <lmj-body>` should reassemble at 100% coverage. Confirms the TX firmware emits valid runtime-CCA-framed packets.
-2. **TX to a real RMJS, monitor ACK transitions** —
-   - Power on the target RMJS unit (factory-fresh, no paired controller)
-   - Start RTL-SDR capture of the runtime CCA channel (433.602844 MHz)
-   - Run synth-TX OTA: BeginTransfer → ~3,200 chunks (102KB / 31B) → ChangeAddrOff at page boundaries
-   - Watch device-side `0x0B` ACKs in real-time. Decode XOR (the rule is in `firmware/src/cca/cca_decoder.h:309`) and watch the `format` byte:
-     - Expected start: `0xC1` (ready) — if NEVER seen, device didn't enter receive mode → BeginTransfer payload may need revisiting
-     - Expected mid-OTA: `0x2E` (in-progress) — if stalls, decoder/CRC issue on our TX side
-     - Expected at page wraps: `0xC2` (advancing) — if missing, ChangeAddrOff format is wrong
-     - Expected at end: `0xEC` (committing) — **success signal**. If never seen, the device received chunks but bootloader rejected commit — likely CRC verification failure.
-3. **Power-cycle and pair test** — after seeing `0xEC`, power-cycle the device. Try to pair it to an RA3 processor. If it pairs as LMJ, attack succeeded.
+**Phase 2a — subnet recon (LANDED, awaiting hardware)**
+
+The captured-OTA subnet `0xEFFD` is `Project.SubnetAddress` from a paired bridge's runtime DB. Per [cca-ota-live-capture.md §"On-air OTA wire protocol"](cca-ota-live-capture.md#byte-2-7-are-the-standard-cca-header-not-ota-specific), devices learn their subnet during pairing and filter incoming packets that don't match. **An unpaired RMJ never pairs (no host system addresses it via subnet) and an unpaired RMJS hasn't yet learned a subnet — both presumably fall back to the factory default `0xFFFF`.** That's hypothesis #1 to test.
+
+`cca ota-begin <subnet> <serial> [dur]` — emits BeginTransfer packets at the captured cadence (~75 ms apart). Wired into the existing CCA TX engine via `CCA_CMD_OTA_BEGIN_TX`; uses the new builders in `firmware/src/cca/cca_ota_tx.h` (TDD against captured-on-air ground truth, all bytes byte-for-byte verified).
+
+Hardware test procedure:
+
+1. Read the target RMJ's serial off the product label (8 hex digits).
+2. Power on RMJ (factory-fresh, never paired).
+3. Start RTL-SDR capture at the runtime CCA channel (`433.602844 MHz`) and stream into a JSONL via `npx tsx tools/cca/ota-extract.ts --dump-all <out>.jsonl --capture <iq>` running in the background.
+4. From the Nucleo shell: `cca ota-begin ffff <serial> 5` (TX BeginTransfer for 5 s with subnet `0xFFFF`).
+5. Look for `type:0x0B` packets in the JSONL stream. The decoder (`firmware/src/cca/cca_decoder.h:309 try_parse_dimmer_ack`) XOR-decodes the format byte; we want `format=0xC1` (READY) to indicate the device entered OTA receive mode.
+6. If no `0xC1` seen with `0xFFFF`: sweep candidates `0x0000`, `0xFFFE`, `0x82D7`, `0xEFFD`. Record which, if any, triggers `0xC1`.
+7. If still no `0xC1`: the bootloader RX path may not accept on-runtime-channel packets in factory state at all. Next step: capture an actual ESN→RMJ transaction (if user has access to ESN) to see what address path the host uses for unpaired devices, OR drill into the bootloader's RX dispatcher (BN `0x92be` containing the FA DE sync check) to identify factory-state acceptance criteria.
+
+**Phase 2b — full OTA TX (NOT YET BUILT — needs subnet recon result first)**
+
+Adds `CCA_CMD_OTA_FULL_TX` that:
+1. Receives an LMJ LDF body via the TCP stream protocol (one or more ~32 KB chunks)
+2. Buffers it in Nucleo SRAM (~102 KB; well within RAM_D1 320 KB)
+3. Runs the full BeginTransfer → 3,300× TransferData → ChangeAddrOff sequence at the captured cadence
+4. Emits progress to UART log
+
+Once Phase 2a confirms a working subnet, building Phase 2b is mechanical (the builders + chunk iterator are already done in `cca_ota_tx.h` — only the orchestration is missing).
+
+**Phase 2c — monitor ACK transitions**
+
+Watch device-side `0x0B` ACKs in real-time during the full OTA. Decode XOR via `try_parse_dimmer_ack` and watch the `format` byte:
+- Expected start: `0xC1` (READY) — if NEVER seen, device didn't enter receive mode → BeginTransfer payload may need revisiting
+- Expected mid-OTA: `0x2E` (IN_PROGRESS) — if stalls, decoder/CRC issue on our TX side
+- Expected at page wraps: `0xC2` (ADVANCING_PAGE) — if missing, ChangeAddrOff format is wrong
+- Expected at end: `0xEC` (COMMITTING) — **success signal**. If never seen, the device received chunks but bootloader rejected commit — likely CRC verification failure.
+
+**Phase 3 — power-cycle and pair test**
+
+After seeing `0xEC`, power-cycle the RMJ. Try to pair to an RA3 processor. If it pairs as LMJ, attack succeeded. **RMJS unit is not to be bricked — only test on RMJS once the protocol is fully validated against RMJ.**
 
 ### Decision tree at each stall point
 
@@ -257,7 +283,13 @@ tools/
 
 firmware/src/cca/
 ├── cca_decoder.h:309                 ← try_parse_dimmer_ack — XOR-ACK decoder rule
-└── cca_tx_builder.h                  ← existing CCA TX builder (target for synth-TX additions)
+├── cca_tx_builder.h                  ← existing CCA TX builder
+├── cca_ota_tx.h                      ← NEW: synth-OTA-TX builders (BeginTransfer, TransferData, ChangeAddrOff, chunk iter)
+├── cca_pairing.cpp                   ← exec_ota_begin (Phase 2a subnet recon TX loop)
+└── cca_commands.h                    ← CCA_CMD_OTA_BEGIN_TX = 0x1C
+
+firmware/tests/
+└── test_ota_tx.cpp                   ← 15 TDD tests against captured-on-air ground truth
 
 data/
 ├── captures/cca-ota-20260428-190439.rf.bin             ← 19-min IQ capture (gitignored)
